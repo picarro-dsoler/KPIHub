@@ -1,0 +1,15 @@
+*.db
+*.json
+*.xlsx
+*.csv
+*.txt
+*.log
+*.pdf
+*.html
+*.css
+*.js
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz

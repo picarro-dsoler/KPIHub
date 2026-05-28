@@ -1,4 +1,5 @@
 from locallib.picarrodb import *
+# File that contains all the table definitions for the ingester
 
 ReportSummaryTable = DBTable('ReportSummaryTable')
 ReportSummaryTable.add_column(DBColumn('ReportId', datatype='uniqueidentifier'))

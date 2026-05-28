@@ -1,0 +1,78 @@
+from locallib.picarrodb import *
+import sqlite3
+from .KPITable import KPITable
+
+# Report Summary Table
+KPI_ReportSummary = KPITable('KPI_ReportSummary')
+KPI_ReportSummary.add_column(DBColumn('Id', datatype='uniqueidentifier'))
+KPI_ReportSummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier', key='primary'))
+KPI_ReportSummary.add_column(DBColumn('CustomerId', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('ReportName', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('ReportDate', datatype='datetime'))
+KPI_ReportSummary.add_column(DBColumn('ReportYear', datatype='int'))
+KPI_ReportSummary.add_column(DBColumn('ReportMonth', datatype='int'))
+KPI_ReportSummary.add_column(DBColumn('ReportWeek', datatype='int'))
+KPI_ReportSummary.add_column(DBColumn('ReportAssetLengthKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('AssetCoveredLengthKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('DistributionPipeKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('DistributionPipeCoveredKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('ServicePipeKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('ServicePipeCoveredKm', datatype='float'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryName', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryType', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryMode', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryType', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryPlant', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundarySubplant', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+
+
+# Emission Source Summary Table
+KPI_EmissionSourceSummary = KPITable('KPI_EmissionSourceSummary')
+KPI_EmissionSourceSummary.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
+KPI_EmissionSourceSummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier', key='foreign'))
+KPI_EmissionSourceSummary.add_column(DBColumn('EmissionRate', datatype='float'))
+KPI_EmissionSourceSummary.add_column(DBColumn('LisaCount', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('B0Count', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('B1Count', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('Bm1Count', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('Bm2Count', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('Not_NGCount', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('PGCount', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+
+
+# Survey Summary Table
+KPI_SurveySummary = KPITable('KPI_SurveySummary')
+KPI_SurveySummary.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
+KPI_SurveySummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier', key='foreign'))
+KPI_SurveySummary.add_column(DBColumn('SurveyId', datatype='uniqueidentifier'))
+KPI_SurveySummary.add_column(DBColumn('SurveyorUnit', datatype='nvarchar'))
+KPI_SurveySummary.add_column(DBColumn('SurveyDurationMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('StartHour', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('StartTime', datatype='datetime'))
+KPI_SurveySummary.add_column(DBColumn('StartEpoch', datatype='bigint'))
+KPI_SurveySummary.add_column(DBColumn('EndTime', datatype='datetime'))
+KPI_SurveySummary.add_column(DBColumn('EndEpoch', datatype='bigint'))
+KPI_SurveySummary.add_column(DBColumn('StartDay', datatype='date'))
+KPI_SurveySummary.add_column(DBColumn('EndDay', datatype='date'))
+KPI_SurveySummary.add_column(DBColumn('LateralRotation', datatype='nvarchar'))
+KPI_SurveySummary.add_column(DBColumn('NumberOfPeaks', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('DaySegments', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('NightSegments', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('ActiveSegments', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('IdleSegments', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('TotalSegments', datatype='int'))
+KPI_SurveySummary.add_column(DBColumn('TotalKilometers', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('DayKilometers', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('NightKilometers', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('SegmentDurationMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('IdleTimeMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('ActiveTimeMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('AvgSpeedKm', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
