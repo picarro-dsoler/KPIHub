@@ -1,9 +1,9 @@
 from locallib.picarrodb import *
 from locallib.query import *
 
-from ..tables.CustomerTables import *
+from ..tables.IngesterTables import *
 from ..config import *
-
+from ..KPIHubConnection import *
 import pandas as pd
 from datetime import datetime
 def add_customer(customer_name,Conn):
@@ -19,22 +19,18 @@ def add_customer(customer_name,Conn):
         else:
             DBLocation = 'Unknown'
         short_name = result.iloc[0]['Name'].replace(" ", "")
-   
         # Insert if not exists, otherwise update the row
+        # This version uses the correct PK constraint. Double-check that KPI_Customer.CustomerId is PRIMARY KEY or UNIQUE.
         upsert_query = """
-            INSERT INTO KPI_Customer (Id, Name, ShortName, DBLocation, LastUpdated)
+            INSERT INTO KPI_Customer (CustomerId, Name, ShortName, DBLocation, LastUpdated)
             VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(Id) DO UPDATE SET
+            ON CONFLICT(CustomerId) DO UPDATE SET
                 Name=excluded.Name,
                 ShortName=excluded.ShortName,
                 DBLocation=excluded.DBLocation,
                 LastUpdated=excluded.LastUpdated
         """
-        # NOTE: Make sure that the "Id" column in the "Customer" table is declared as PRIMARY KEY or UNIQUE.
-        # For SQLite, this syntax only works if "Id" has such a constraint.
-        # If the Customer table is missing this constraint, you must ALTER the table or define it when creating.
-   
- 
+
         params = (
             result.iloc[0]['Id'],
             result.iloc[0]['Name'],

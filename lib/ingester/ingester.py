@@ -15,6 +15,8 @@ logging.basicConfig(
 )
 #Class used to get any data inside the data KPI HUb database
 # The inggester focuses on a single table at a time
+
+#Add sanity checks to ensure that all what you have on P-Cubed are the same things you have on KPIHUb
 class Ingester:
     def __init__(self, arguments):
         name = self.__class__.__name__

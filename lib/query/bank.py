@@ -9,11 +9,13 @@ def setup_query(query_func):
 
 
 @setup_query
-def get_reports(customer_name, table_name = None, years=None, final_checkbox = True):
-    year_filter = ""
-    if years:
+def get_reports(customer_name, table_name = None, years=None, starting_date=None, final_checkbox = True):
+    date_filter = ""
+    if starting_date:
+        date_filter = f"AND R.DateStarted >= '{starting_date}'"
+    elif years:
         years_str = ", ".join(str(year) for year in years)
-        year_filter = f"AND YEAR(R.DateStarted) IN ({years_str})"
+        date_filter = f"AND YEAR(R.DateStarted) IN ({years_str})"
 
     if table_name is not None:
         into_clause = f"INTO {table_name}"
@@ -28,6 +30,7 @@ def get_reports(customer_name, table_name = None, years=None, final_checkbox = T
     query = f"""
     SELECT 
         C.Name AS CustomerName,
+        C.Id AS CustomerId,
         CASE
             WHEN ReportType.Description = 'Compliance' THEN CONCAT('CR-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
             WHEN ReportType.Description = 'Emissions' THEN CONCAT('ER-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
@@ -69,7 +72,7 @@ def get_reports(customer_name, table_name = None, years=None, final_checkbox = T
         LOWER(C.Name) = LOWER('{customer_name}')
         AND L.Title = 'Final Checkbox'
         AND RL.IsActive = 1
-        {year_filter}
+        {date_filter}
     """
     return query
 
@@ -94,3 +97,50 @@ def query_reports_view(report_table,table_name = None):
     from dash.v_report 
     where rp_id IN (SELECT LOWER(ReportId::text)::uuid FROM {report_table})"""
     return query
+
+@setup_query
+def query_emission_sources_table(report_table = None, table_name = None):
+    ES_Columns = EmissionSource.copy()
+    ES_Columns.delete_column('Lisa')
+    ES_Columns.set_column_alias('Id','EmissionSourceId')
+
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+    query = f"""SELECT {ES_Columns.get_columns()} {into_clause} FROM EmissionSource ES WHERE ES.ReportId IN (SELECT ReportId FROM {report_table})"""
+    return query
+
+@setup_query
+def query_surveys_table(report_table = None, table_name = None):
+    Survey_Columns = Survey.copy()
+    Survey_Columns.delete_column('SurveyAreaBoundary')
+    Survey_Columns.set_column_alias('Id','SurveyId')
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+    query = f"""SELECT {Survey_Columns.get_columns()},
+    SQC.LateralRotation as LateralRotation,
+    SQC.NumberOfPeaks as NumberOfPeaks,
+    (SELECT Description FROM SurveyorUnit SU WHERE SU.Id = S.SurveyorUnitId) AS SurveyorUnit,
+    RDS.ReportId AS ReportId 
+    {into_clause} FROM Survey S 
+    JOIN ReportDrivingSurvey RDS ON S.Id = RDS.SurveyId
+    JOIN SurveyQACheck SQC ON S.Id = SQC.SurveyId
+    WHERE RDS.ReportId IN (SELECT ReportId FROM {report_table})"""
+    return query
+
+
+@setup_query
+def query_segments_table(survey_table = None, table_name = None):
+    segments_Columns = Segment.copy()
+    #segments_Columns.delete_column('Shape')
+    segments_Columns.delete_column('Order')
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+    query = f"""SELECT {segments_Columns.get_columns()}, S.[Order] as [Order] {into_clause} FROM Segment S WHERE S.SurveyId IN (SELECT SurveyId FROM {survey_table}) """
+    return query
+
