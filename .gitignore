@@ -5,6 +5,11 @@
 *.txt
 *.log
 *.pdf
+# Track customer KPI outputs on No_DB_KPI (r1/Cadent, r1/WWU, r1/GNI)
+!r1/
+!r1/**/
+!r1/**/*.xlsx
+!r1/**/*.pdf
 *.html
 *.css
 *.js

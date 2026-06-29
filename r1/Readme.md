@@ -1,3 +1,7 @@
-Repository for the KPI Hub
+# KPIHub r1 (No_DB_KPI branch)
 
-Branch for the first revision. Presented at the Global customer office on 7 May 2026.
+Customer-specific KPI workbooks and outputs without the shared `lib/` / `tools/` stack on `dev`.
+
+- `Cadent/` — Cadent KPI outputs
+- `WWU/` — WWU KPI outputs
+- `GNI/` — GNI KPI outputs
