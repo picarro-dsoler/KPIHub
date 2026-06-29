@@ -38,7 +38,11 @@ class KPITable(DBTable):
         if primary_keys:
             pk_str = ", PRIMARY KEY (" + ", ".join(primary_keys) + ")"
             col_defs += pk_str
+        if 'pair_key' in arguments and arguments['pair_key'] is not None:
+            col_defs += f" , PRIMARY KEY ({', '.join(arguments['pair_key'])})"
         sql = f"CREATE TABLE IF NOT EXISTS {self.name} ({col_defs})"
+
+        print(sql)
         cursor.execute(sql)
         if 'extra_sql' in arguments and arguments['extra_sql'] is not None:
             cursor.execute(arguments['extra_sql'])
@@ -50,8 +54,9 @@ class KPITable(DBTable):
             raise ValueError("Arguments are required")
         if 'db_path' not in arguments:
             raise ValueError("db_path is required")
-        self.delete_table(arguments)
-        self.create_table(arguments)
+        arguments_db_path = arguments['db_path']
+        self.delete_table(arguments = {'db_path': arguments_db_path})
+        self.create_table(arguments = arguments)
 
     def query_table(self, arguments = None):
         if arguments is None:

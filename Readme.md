@@ -1,1 +1,1 @@
-Repository for the KPI Hubzzzzzzz
+Repository for the KPI Hub

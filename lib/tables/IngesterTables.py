@@ -30,10 +30,10 @@ KPI_ReportDrivingSurvey.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 # Utilization Table
 KPI_Utilization = KPITable("KPI_Utilization")
-KPI_Utilization.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
-KPI_Utilization.add_column(DBColumn('CustomerId', datatype='nvarchar'))
-KPI_Utilization.add_column(DBColumn('WrokingDays', datatype='datetime'))
+KPI_Utilization.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
+KPI_Utilization.add_column(DBColumn('WorkingDays', datatype='int'))
 KPI_Utilization.add_column(DBColumn('WorkingHours', datatype='int'))
+KPI_Utilization.add_column(DBColumn('BaseSurveyorCount', datatype='int'))
 KPI_Utilization.add_column(DBColumn('Description', datatype='nvarchar'))
 KPI_Utilization.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
@@ -80,8 +80,8 @@ KPI_EmissionSourceSummary.add_column(DBColumn('LastUpdated', datatype='datetime'
 
 # Survey Summary Table
 KPI_SurveySummary = KPITable('KPI_SurveySummary')
-KPI_SurveySummary.add_column(DBColumn('SurveyId', datatype='uniqueidentifier', key='primary'))
-KPI_SurveySummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier', key='primary'))
+KPI_SurveySummary.add_column(DBColumn('SurveyId', datatype='uniqueidentifier'))
+KPI_SurveySummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier'))
 KPI_SurveySummary.add_column(DBColumn('SurveyorUnit', datatype='nvarchar'))
 KPI_SurveySummary.add_column(DBColumn('SurveyDurationMinutes', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('StartHour', datatype='int'))
@@ -111,9 +111,20 @@ KPI_SurveySummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 #KPI Table
 KPI_Definition = KPITable('KPI_Definition')
-KPI_Definition.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
-KPI_Definition.add_column(DBColumn('CustomerId', datatype='nvarchar'))
-KPI_Definition.add_column(DBColumn('Name', datatype='nvarchar'))
+KPI_Definition.add_column(DBColumn('Name', datatype='nvarchar', key='primary'))
+KPI_Definition.add_column(DBColumn('Unit', datatype='nvarchar'))
+KPI_Definition.add_column(DBColumn('Formula', datatype='nvarchar'))
 KPI_Definition.add_column(DBColumn('Description', datatype='nvarchar'))
-KPI_Definition.add_column(DBColumn('Value', datatype='float'))
 KPI_Definition.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+#KPI_Data Table
+KPI_Data = KPITable('KPI_Data')
+KPI_Data.add_column(DBColumn('Id', datatype='nvarchar', key='primary'))
+KPI_Data.add_column(DBColumn('KPIId', datatype='nvarchar'))
+KPI_Data.add_column(DBColumn('CustomerId', datatype='uniqueidentifier'))
+KPI_Data.add_column(DBColumn('Year', datatype='int'))
+KPI_Data.add_column(DBColumn('PeriodType', datatype='int'))
+KPI_Data.add_column(DBColumn('PeriodValue', datatype='int'))
+KPI_Data.add_column(DBColumn('Value', datatype='nvarchar'))
+KPI_Data.add_column(DBColumn('DataType', datatype='nvarchar'))
+KPI_Data.add_column(DBColumn('LastUpdated', datatype='datetime'))

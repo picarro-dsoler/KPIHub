@@ -49,11 +49,7 @@ def get_reports(customer_name, table_name = None, years=None, starting_date=None
         RAC.DistributionPipeCoveredKm,
         RAC.DistributionPipePercentCovered,
         RAC.ServicePipeKm,
-        RAC.ServicePipeCoveredKm,
-        YEAR(R.DateStarted) AS ReportYear,
-        MONTH(R.DateStarted) AS ReportMonth,
-        DATEPART(WEEK, R.DateStarted) AS ReportWeek,
-        DATEPART(QUARTER, R.DateStarted) AS ReportQuarter
+        RAC.ServicePipeCoveredKm
     {into_clause}
     FROM
         Report R
@@ -126,8 +122,8 @@ def query_surveys_table(report_table = None, table_name = None):
     (SELECT Description FROM SurveyorUnit SU WHERE SU.Id = S.SurveyorUnitId) AS SurveyorUnit,
     RDS.ReportId AS ReportId 
     {into_clause} FROM Survey S 
-    JOIN ReportDrivingSurvey RDS ON S.Id = RDS.SurveyId
-    JOIN SurveyQACheck SQC ON S.Id = SQC.SurveyId
+    LEFT JOIN ReportDrivingSurvey RDS ON S.Id = RDS.SurveyId
+    LEFT JOIN SurveyQACheck SQC ON S.Id = SQC.SurveyId
     WHERE RDS.ReportId IN (SELECT ReportId FROM {report_table})"""
     return query
 

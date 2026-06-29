@@ -28,12 +28,16 @@ class Ingester:
         self.logger.info(f"Querying data for {self.name}")
         pass
 
-    def transform_data(self):
+    def process_data(self):
         self.logger.info(f"Transforming data for {self.name}")
         pass
 
     def load_data(self):
         self.logger.info(f"Loading data for {self.name}")
+        pass
+
+    def sanity_check(self):
+        self.logger.info(f"Sanity checking data for {self.name}")
         pass
 
 class ReportIngester(Ingester):
