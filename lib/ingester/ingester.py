@@ -1,18 +1,20 @@
-from locallib.picarrodb import *
-from locallib.query import *
-from locallib.pandas import *
+import os
+import sys
+import pandas as pd
+# Get the absolute path of the current file's directory
+directory = os.path.abspath(os.path.dirname(__file__))
 
-from ..config import *
+# Just add the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+
+from config import *
+from locallib.picarrodb import *
+from locallib.pandas import *
+from locallib.slack import *
+from locallib.etl import Loggers
 
 import logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(INGESTER_LOG_PATH)
-    ]
-)
+import os
 #Class used to get any data inside the data KPI HUb database
 # The inggester focuses on a single table at a time
 
@@ -20,38 +22,40 @@ logging.basicConfig(
 class Ingester:
     def __init__(self, arguments):
         name = self.__class__.__name__
-        self.logger = logging.getLogger(name)
+        LOG_PATH = os.path.abspath(os.path.join(directory, "..", "..", INGESTER_LOG_PATH, f'{name}.log'))
+        Logger = Loggers(logger_name = name, keys = ['File', 'Slack'])
+        Logger.clear_handlers()
+
+        file_handler = logging.FileHandler(LOG_PATH)
+        # Set date format to dd-mm-yyyy in log output
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%d-%m-%Y')
+        file_handler.setFormatter(formatter)
+        Logger.File.addHandler(file_handler)
+
+        slack_handler = logging.StreamHandler(SlackWriter(channel = 'C0B9PGDNHH7'))
+
+        Logger.Slack.addHandler(slack_handler)
+        self.Logger = Logger
         self.arguments = arguments
-        self.logger.info(f"{name} initialized")
+        self.Logger.info("="*100)
+        self.Logger.info(f"{name} initialized")
 
     def query_data(self):
-        self.logger.info(f"Querying data for {self.name}")
+        self.Logger.info(f"Querying data for {self.name}")
         pass
 
     def process_data(self):
-        self.logger.info(f"Transforming data for {self.name}")
+        self.Logger.info(f"Transforming data for {self.name}")
         pass
 
-    def load_data(self):
-        self.logger.info(f"Loading data for {self.name}")
+    def push_data(self):
+        self.Logger.info(f"Loading data for {self.name}")
         pass
 
     def sanity_check(self):
-        self.logger.info(f"Sanity checking data for {self.name}")
+        self.Logger.info(f"Sanity checking data for {self.name}")
         pass
 
-class ReportIngester(Ingester):
-    def __init__(self, arguments):
-        super().__init__(arguments)
-        
-    def query_data(self):
-        super().query_data()
-        query = f"SELECT * FROM KPI_ReportSummary"
-        q = Query(query = query)
-        return q.execute(self.arguments['conn'])
-
-    def pull_data(self):
-        pass
 
 class EmissionSourceIngester(Ingester):
     def __init__(self, resource):
