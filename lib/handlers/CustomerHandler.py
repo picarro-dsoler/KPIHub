@@ -1,11 +1,27 @@
 from locallib.picarrodb import *
 from locallib.query import *
 
-from ..tables.IngesterTables import *
-from ..config import *
-from ..KPIHubConnection import *
+import os
+import sys
+
+
+# Get the absolute path of the current file's directory
+directory = os.path.abspath(os.path.dirname(__file__))
+
+# Just add the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+
+from tables.IngesterTables import *
+from config import *
+from lib.KPIHubConnection import *
 import pandas as pd
 from datetime import datetime
+
+def get_customer_list(Conn):
+    query = f"SELECT * FROM KPI_Customer WHERE DBLocation IS NOT 'Unknown'"
+    q = Query(query = query)
+    return q.execute(Conn)
+
 def add_customer(customer_name,Conn):
     pull_query = Query(query = f"SELECT C.Id, C.Name FROM Customer C WHERE LOWER(C.Name) = LOWER('{customer_name}')")
     result = pull_query.execute(Conn)

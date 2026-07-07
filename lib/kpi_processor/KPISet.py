@@ -1,10 +1,32 @@
-class KPI:
+from locallib.picarrodb import *
+from locallib.slack import *
+from locallib.etl import Loggers
+
+import os
+import sys
+import pandas as pd
+from datetime import datetime, date, timedelta
+
+# Get the absolute path of the current file's directory
+directory = os.path.abspath(os.path.dirname(__file__))
+
+# Just add the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+sys.path.append(directory)
+from tables.IngesterTables import *
+from config import *
+from KPIHubConnection import *
+from query.bank import *
+
+class KPISet:
     def __init__(self, name, customer_name = None, period = None):
         self.name = name
         self.tableDefinition = KPI_Definition
         self.tableData = KPI_Data
         self.customer_name = customer_name
-
+        self.description = description
+        self.unit = unit
+        self.formula = formula
         #Test Query Result
         self.query_result = self.query_info()
 

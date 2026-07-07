@@ -12,43 +12,23 @@ directory = os.path.abspath(os.path.dirname(__file__))
 
 # Just add the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(directory, "..")))
-
+sys.path.append(directory)
 from tables.IngesterTables import *
 from config import *
 from KPIHubConnection import *
 from query.bank import *
-from ingester import *
+from IngesterClass import Ingester
 
 from datetime import date
 from datetime import timedelta
 
-class ReportIngester(Ingester):
+class ReportSummaryIngester(Ingester):
     def __init__(self, arguments):
         super().__init__(arguments)
-        self.customer_list = self.get_customer_list()
-        self.update_window = self.get_update_window()
-        self.reports = None
-        self.customer_info = None
+        self.table = KPI_ReportSummary
 
-    def get_customer_list(self):
-        query = f"SELECT * FROM KPI_Customer WHERE DBLocation IS NOT 'Unknown'"
-        q = Query(query = query)
-        return q.execute(self.arguments['conn'])
-
-    def set_customer_info(self, customer_info):
-        self.customer_info = customer_info
-
-    def get_update_window(self):
-        current_date = date.today()
-        update_window = current_date - timedelta(days=UPDATE_WINDOW_DAYS)
-        return update_window
-        
-    def query_data(self):
-        customer_name = self.customer_info['Name']
-        customer_id = self.customer_info['CustomerId']
-        customer_db = self.customer_info['DBLocation']
-
-        self.Logger.info(f"Processing customer: {customer_name}")
+    def update_check(self):
+        self.Logger.info(f"Processing customer: {self.customer_info['Name']}")
         
         # Query to get the number of different ReportId from reports from the very beggining
         query =   f"""SELECT COUNT(DISTINCT R.Id) as ReportCount FROM
@@ -65,30 +45,33 @@ class ReportIngester(Ingester):
         LEFT JOIN ReportCompliance RC ON R.Id = RC.ReportId
         LEFT JOIN ReportAreaCovered RAC ON R.Id = RAC.ReportId
         WHERE
-            R.CustomerId = '{customer_id}' AND R.DateStarted >= '{STARTING_DATE}' AND L.Title = 'Final Checkbox' AND RL.IsActive = 1
+            R.CustomerId = '{self.customer_info['CustomerId']}' AND R.DateStarted >= '{STARTING_DATE}' AND L.Title = 'Final Checkbox' AND RL.IsActive = 1
             AND L.Title = 'Final Checkbox'
             AND RL.IsActive = 1
         """
 
-        numReports = Query(query =query).execute(CONN_DICT[customer_db])
+        numReports = Query(query =query).execute(CONN_DICT[self.customer_info['DBLocation']])
         num_unique_report_ids = numReports.iloc[0]['ReportCount'] if len(numReports) > 0 else 0
         self.Logger.info(f"Number of unique Reports in LSDB: {num_unique_report_ids}")
 
         #Query the last report from the KPIHUb
-        query = Query(f"SELECT * FROM KPI_ReportSummary WHERE CustomerId = '{customer_id}' ORDER BY LastUpdated DESC LIMIT 1").execute(KPIHub_Conn)
+        query = Query(f"SELECT * FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}' ORDER BY LastUpdated DESC LIMIT 1").execute(KPIHub_Conn)
+
         #If there are none query from the very beggining
         if len(query) > 0:
             last_updated = query.iloc[0]['LastUpdated']
-            starting_date = self.update_window
-            process_reports = True
+            self.starting_date = self.update_window
+            self.check_flag = True
             self.Logger.info(f"Last updated: {last_updated}, processing")
         else:
-            self.Logger.info(f"No reports found, starting from {starting_date}")
-            process_reports = True
-            starting_date = STARTING_DATE
+            self.Logger.info(f"No reports found, starting from {self.starting_date}")
+            self.check_flag = True
+            self.starting_date = STARTING_DATE
 
-        if process_reports:
-            query = get_reports(customer_name, starting_date=starting_date, final_checkbox = True)
+    def query_data(self):
+
+        if self.check_flag:
+            query = get_reports(self.customer_info['Name'], starting_date=self.starting_date, final_checkbox = True)
             LSDB_COLS = [
                 'ReportId',
                 'CustomerId',
@@ -107,8 +90,8 @@ class ReportIngester(Ingester):
 
             DATAHUB_COLS = ['ReportId', 'BoundaryName', 'BoundaryType', 'BoundaryMode', 'BoundaryPlant', 'BoundarySubplant', 'BoundaryRegion', 'BoundarySubRegion']
 
-            reports_lsdb = query.execute(CONN_DICT[customer_db])
-            if customer_db == 'EU1' or customer_db == 'EU2':
+            reports_lsdb = query.execute(CONN_DICT[self.customer_info['DBLocation']])
+            if self.customer_info['DBLocation'] == 'EU1' or self.customer_info['DBLocation'] == 'EU2':
                 reports_lsdb.db.set_query(query_reports_view(report_table = 'temp_reports'))
                 reports_datahub = reports_lsdb.db.execute(DATAHUB_Conn, source_col = 'ReportId', temp_table_name = 'temp_reports')
                 # Clisify (classify) the report_summary by different periods using to_period: quarter, year, month, week
@@ -125,19 +108,17 @@ class ReportIngester(Ingester):
                 reports = reports_lsdb[LSDB_COLS]
             # Add/update the LastUpdated column to the reports DataFrame as current timestamp
             reports['LastUpdated'] = datetime.now()
-            self.Logger.info(f"Reports from LSDB starting from {starting_date}: {len(reports)}")
-            self.reports = reports
-
-    def push_data(self):
-        KPI_ReportSummary.update_table(arguments = {'db_path': DB_PATH, 'DataFrame': self.reports, 'PrimaryKey': 'ReportId'})
+            self.Logger.info(f"Reports from LSDB starting from {self.starting_date}: {len(reports)}")
+            self.data['output'] = reports
 
     def sanity_check(self):
+        super().sanity_check()
         df_kpi = Query(query = f"SELECT * FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
         self.Logger.info(f"Total reports from KPI_ReportSummary: {len(df_kpi)}")
 
 if __name__ == "__main__":
     arguments = {'conn': KPIHub_Conn}
-    ingester = ReportIngester(arguments)
+    ingester = ReportSummaryIngester(arguments)
     ingester.set_customer_info(ingester.customer_list.iloc[0])
     ingester.query_data()
     ingester.push_data()

@@ -1,0 +1,233 @@
+from locallib.picarrodb import *
+from locallib.slack import *
+from locallib.etl import Loggers
+
+import os
+import sys
+import pandas as pd
+from datetime import datetime, date, timedelta
+
+# Get the absolute path of the current file's directory
+directory = os.path.abspath(os.path.dirname(__file__))
+
+# Just add the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+sys.path.append(directory)
+
+from tables.IngesterTables import *
+from config import *
+from KPIHubConnection import *
+from query.bank import *
+
+from datetime import date
+from datetime import timedelta
+from functools import reduce
+class KPISummary:
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        self.base_time = {'Year': 'ReportYear'}
+        self.period_dict = period_dict
+        self.data = {}
+        self.tableList = []
+        self.aggregator_dict = {**self.base_time, **aggregator, **period_dict}
+        self.aggregator = list(self.aggregator_dict.values())
+        self.customer_name = customer_name
+
+        self.customer_id = None
+        result = Query(query = f"SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}'").execute([KPIHub_Conn])
+        if not result.empty:
+            self.customer_id = result.iloc[0]['CustomerId']
+        else:
+            raise ValueError(f"Customer name '{self.customer_name}' not found in KPI_Customer table.")
+   
+    
+    def query_table(self):
+        for table in self.tableList:
+            self.data[table] = Query(query = f"SELECT * FROM {table.name} WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId IN (SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}'))").execute([KPIHub_Conn])
+
+    def process_data(self, on='ReportId'):
+        # Aggregate and operate
+        if not self.tableList:
+            self.data['output'] = pd.DataFrame()
+        elif len(self.tableList) == 1:
+            temp_data = self.data[self.tableList[0]]
+        else:
+            temp_data = self.data[self.tableList[0]]
+            for table in self.tableList[1:]:
+                temp_data = pd.merge(temp_data, self.data[table], on=on, how='inner')
+        if self.tableList:
+            self.data['output'] = temp_data.groupby(self.aggregator).apply(self.processor)
+            self.data['output'] = self.data['output'].round(2)
+ 
+        self.melter()
+
+
+    def push_data(self):
+        # Fix db path to go from the root directory to database/KPIHub.db
+        db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub.db'
+        KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': db_path, 'PrimaryKey': 'Id'})
+ 
+    def processor(self, df):
+        return df
+
+    def melter(self):
+        r = self.data['output'].reset_index()
+        r_long = r.melt(id_vars=self.aggregator, var_name='KPIId', value_name='Value')
+        r_long['Id'] = r_long.apply(self.generate_id, axis=1)
+        period_dict_values = list(self.period_dict.values())
+        period_dict_keys = list(self.period_dict.keys())
+        base_time_values = list(self.base_time.values())
+        r_long = r_long.rename(columns={period_dict_values[0]: 'PeriodValue', base_time_values[0]: 'Year'})
+   
+        r_long['PeriodType'] = period_dict_keys[0]
+        r_long['LastUpdated'] = datetime.now()
+        r_long['CustomerId'] = self.customer_id
+
+        self.data['output'] = r_long
+
+
+    def generate_id(self, row):
+        output = f"{row['KPIId']}_{self.customer_name}"
+        for key, value in self.aggregator_dict.items():
+            if isinstance(row[value], str):
+                output = f"{output}_{key[0]}{row[value].replace(' ', '')}"
+            else:
+                output = f"{output}_{key[0]}{row[value]}"
+           
+
+        return output
+
+class KPIReport(KPISummary):
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(customer_name, aggregator, period_dict)
+        self.tableList = [KPI_ReportSummary]
+
+    def processor(self, df):
+        out = {
+            'FOVMain': df['DistributionPipeCoveredKm'].sum()/df['DistributionPipeKm'].sum(),
+            'ReportAssetLengthKm': df['ReportAssetLengthKm'].sum() if 'ReportAssetLengthKm' in df else None,
+            'AssetCoveredLengthKm': df['AssetCoveredLengthKm'].sum() if 'AssetCoveredLengthKm' in df else None,
+            'DistributionPipeKm': df['DistributionPipeKm'].sum() if 'DistributionPipeKm' in df else None,
+            'DistributionPipeCoveredKm': df['DistributionPipeCoveredKm'].sum() if 'DistributionPipeCoveredKm' in df else None,
+            'ServicePipeKm': df['ServicePipeKm'].sum() if 'ServicePipeKm' in df else None,
+            'ServicePipeCoveredKm': df['ServicePipeCoveredKm'].sum() if 'ServicePipeCoveredKm' in df else None,
+            'ReportCount': df.shape[0]}
+            
+        return pd.Series(out)
+
+class KPIEmissionSource(KPISummary):
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(customer_name, aggregator, period_dict)
+        self.tableList = [KPI_ReportSummary,KPI_EmissionSourceSummary]
+
+    def processor(self, df):
+        denominator = 'DistributionPipeCoveredKm'
+        out = {}
+        denom = df[denominator].sum()
+        lisa_count = df["LisaCount"].sum()
+        out["LisaCount"] = lisa_count
+        out["EmissionRate"] = df["EmissionRate"].sum()
+        out["B0Count"] = df["B0Count"].sum()
+        out["B1Count"] = df["B1Count"].sum()
+        out["Bm1Count"] = df["Bm1Count"].sum()
+        out["Bm2Count"] = df["Bm2Count"].sum()
+        out["NGCount"] = df["NGCount"].sum()
+        out["PGCount"] = df["PGCount"].sum()
+        out["Not_NGCount"] = df["Not_NGCount"].sum()
+
+        out["LisaDensity"] = lisa_count / denom if denom else None
+        out["InstatanoeusEmission"] = out["EmissionRate"] / denom if denom else None
+        out["B0Density"] = out["B0Count"] / denom if denom else None
+        out["B1Density"] = out["B1Count"] / denom if denom else None
+        out["B-1Density"] = out["Bm1Count"] / denom if denom else None
+        out["B-2Density"] = out["Bm2Count"] / denom if denom else None
+        out["NGDensity"] = out["NGCount"] / denom if denom else None
+        out["PGDensity"] = out["PGCount"] / denom if denom else None
+
+        total_sum = out['NGCount'] + out['Not_NGCount'] + out['PGCount']
+
+        out["B0Share"] = out["B0Count"] / lisa_count if lisa_count else None
+        out["B1Share"] = out["B1Count"] / lisa_count if lisa_count else None
+        out["B-1Share"] = out["Bm1Count"] / lisa_count if lisa_count else None
+        out["B-2Share"] = out["Bm2Count"] / lisa_count if lisa_count else None
+        out["NGShare"] = out["NGCount"] / total_sum if total_sum else None
+        out["PGShare"] = out["PGCount"] / total_sum if total_sum else None
+        out["Not_NGShare"] = out["Not_NGCount"] / total_sum if total_sum else None
+        return pd.Series(out)
+
+class KPISurveySummary(KPISummary):
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(customer_name, aggregator, period_dict)
+        self.tableList = [KPI_ReportSummary,KPI_SurveySummary]
+
+    def processor(self, df):
+        customer_utilization = {'Hours':7, 'Days':7}
+        if hasattr(df, 'name') and df.name is not None:
+            group_year = df.name[0]
+            group_week_range = df.name[1]
+        else:
+            group_year, group_week_range = None, None
+        current_year = datetime.now().year
+
+        current_week = datetime.now().isocalendar()[1]
+        if group_year is not None and group_week_range is not None:
+            day_count = days_in_week_range(group_week_range, current_year)
+        else:
+            day_count = None
+
+        unique_reports = df.drop_duplicates(subset=['ReportId'])
+        no_surveyors = df['SurveyorUnit'].nunique()
+        surveyDurationHours = df['SurveyDurationMinutes'].sum()/60
+        targetTimeHours = day_count*customer_utilization['Hours']*no_surveyors
+        starndardTargetTimeHours = 6*5*25
+        #targetTimeHours = 7*7*25
+        surveyCount = df['SurveyId'].nunique()
+        avg_speed_weighted = df['AvgSpeedKm'] * df['TotalSegments']
+        #print(df.name, no_surveyors, surveyCount)
+        return pd.Series({
+            'SurveyDurationHours': surveyDurationHours,
+            'TargetDurationHours': targetTimeHours,
+            'CustomerUtilization': surveyDurationHours/targetTimeHours,
+            'StarndardUtilization': surveyDurationHours/starndardTargetTimeHours,
+            'TotalSurveyors': no_surveyors,
+            'ProductivityPerSurveyor': unique_reports['DistributionPipeCoveredKm'].sum()/no_surveyors,
+            'SurveyCount': surveyCount,
+            'AvgSpeedKm': avg_speed_weighted.sum()/df['TotalSegments'].sum(),
+            'SurveysCarDay': surveyCount/no_surveyors/day_count,
+
+            'IdleTime': 100*df['IdleTimeMinutes'].sum()/df['SurveyDurationMinutes'].sum(),
+            'DaysCount': day_count,
+            'TotalDrivenLengthKm': df['TotalKilometers'].sum(),
+            'DrivingRatio': df['TotalKilometers'].sum()/unique_reports['AssetCoveredLengthKm'].sum(),
+            'NightDrivenLength': df['NightKilometers'].sum(),
+            'DayDrivenLength': df['DayKilometers'].sum(),
+            'NightRatio': 100*df['NightKilometers'].sum()/df['TotalKilometers'].sum(),
+            'DayRatio': 100*df['DayKilometers'].sum()/df['TotalKilometers'].sum(),
+        })
+
+
+def days_in_week_range(week_number, year):
+    """
+    Helper to count days in a week. If it's the current week, return days up to today.
+    week_number: int week number (ISO, 1-53).
+    year: int year.
+    current_week: int, current week number.
+    """
+
+    # Get Monday of the ISO week
+    try:
+        start_date = date.fromisocalendar(int(year), int(week_number), 1)
+    except Exception:
+        # If not a valid ISO week/year, fall back to 7
+        return 7
+
+    # End on Sunday
+    end_date = start_date + timedelta(days=6)
+
+    today = datetime.now().date()
+    this_iso = today.isocalendar()[:2]  # (year, week)
+
+    if (int(year), int(week_number)) == this_iso:
+        delta = (today - start_date).days + 1  # include today
+        return min(max(delta, 0), 7)
+    else:
+        return 7

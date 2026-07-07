@@ -1,3 +1,7 @@
+# KPIHub source code lives in lib/ — override global gitignore lib/ (Python packaging)
+!lib/
+!lib/**
+
 *.db
 *.json
 *.xlsx

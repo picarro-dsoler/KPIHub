@@ -1,6 +1,6 @@
 from locallib.picarrodb import *
 import sqlite3
-from config import *
+from lib.config import *
 
 import os
 import sys
@@ -10,6 +10,7 @@ directory = os.path.abspath(os.path.dirname(__file__))
 
 # Just add the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+sys.path.append(os.path.abspath(os.path.join(directory)))
 
 class SQLiteConnection(PConnection):
     def __init__(self, host):

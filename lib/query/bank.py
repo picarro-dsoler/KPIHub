@@ -9,14 +9,11 @@ def setup_query(query_func):
 
 
 @setup_query
-def get_reports(customer_name, table_name = None, years=None, starting_date=None, final_checkbox = True):
+def get_reports(customer_name, table_name = None, starting_date=None, final_checkbox = True):
     date_filter = ""
     if starting_date:
         date_filter = f"AND R.DateStarted >= '{starting_date}'"
-    elif years:
-        years_str = ", ".join(str(year) for year in years)
-        date_filter = f"AND YEAR(R.DateStarted) IN ({years_str})"
-
+ 
     if table_name is not None:
         into_clause = f"INTO {table_name}"
     else:
