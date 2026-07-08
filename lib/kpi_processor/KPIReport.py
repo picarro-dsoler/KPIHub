@@ -61,10 +61,10 @@ class KPISummary:
         self.melter()
 
 
-    def push_data(self):
+    def push_data(self, PrimaryKey = 'Id'):
         # Fix db path to go from the root directory to database/KPIHub.db
         db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub.db'
-        KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': db_path, 'PrimaryKey': 'Id'})
+        KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': db_path, 'PrimaryKey': PrimaryKey})
  
     def processor(self, df):
         return df
@@ -95,6 +95,51 @@ class KPISummary:
            
 
         return output
+
+class KPIPOR(KPISummary):
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(customer_name, aggregator, period_dict)
+        self.tableList = [KPI_ReportSummary]
+    
+    def process_data(self, on='ReportId'):
+        #Query the POR
+        por = Query(query = f"SELECT * FROM KPI_POR WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
+        if por.empty:
+            raise ValueError(f"POR not found for customer {self.customer_name}")
+        else:
+            # Get the years and fill a dataframe like: reportyear, reportweek, value
+            report_years = []
+            report_weeks = []
+            values = []
+
+            for _, row in por.iterrows():
+                # Generate all 52 weeks per year (assuming week numbers 1-52)
+                year = row['Year']
+                value = row['Value']
+                for week in range(1, 53):
+                    report_years.append(year)
+                    report_weeks.append(week)
+                    values.append(value)
+
+            por_summary_df = pd.DataFrame({
+                'ReportYear': report_years,
+                'ReportWeek': report_weeks,
+                'Value': values
+            }).set_index(['ReportYear', 'ReportWeek'])
+       
+            df = self.data[self.tableList[0]].groupby(self.aggregator).agg({
+                'AssetCoveredLengthKm': 'sum',
+            })
+            df['CumulativeAssetCoveredLengthKm'] = df['AssetCoveredLengthKm'].cumsum()
+            df.drop(columns=['AssetCoveredLengthKm'], inplace=True)
+            df['POR'] = df['CumulativeAssetCoveredLengthKm'] / por_summary_df['Value']
+            df['POR'] = 100*df['POR'].round(2)
+            df['CumulativeAssetCoveredLengthKm'] = df['CumulativeAssetCoveredLengthKm'].round(2)
+
+            self.data['output'] = df
+
+            self.melter()
+
 
 class KPIPeakSAT(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'WeekNumber'}):

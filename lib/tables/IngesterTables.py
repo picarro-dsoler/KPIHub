@@ -13,14 +13,21 @@ KPI_Customer.add_column(DBColumn('DBLocation', datatype='nvarchar'))
 KPI_Customer.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 # POR Table
-KPI_POR = KPITable('KPI_PlanOfRecord')
-KPI_POR.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
+KPI_POR = KPITable('KPI_POR')
 KPI_POR.add_column(DBColumn('CustomerId', datatype='nvarchar'))
-KPI_POR.add_column(DBColumn('StartingDate', datatype='datetime'))
-KPI_POR.add_column(DBColumn('EndingDate', datatype='datetime'))
-KPI_POR.add_column(DBColumn('Description', datatype='nvarchar'))
+KPI_POR.add_column(DBColumn('Year', datatype='int'))
+#KPI_POR.add_column(DBColumn('StartingDate', datatype='datetime'))
+#KPI_POR.add_column(DBColumn('EndingDate', datatype='datetime'))
+#KPI_POR.add_column(DBColumn('Description', datatype='nvarchar'))
 KPI_POR.add_column(DBColumn('Value', datatype='float'))
+KPI_POR.add_column(DBColumn('Unit', datatype='nvarchar'))
 KPI_POR.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+# Output Excel Locations
+KPI_OutputExcelLocation = KPITable('KPI_OutputExcelLocation')
+KPI_OutputExcelLocation.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
+KPI_OutputExcelLocation.add_column(DBColumn('BoxFolderId', datatype='nvarchar'))
+KPI_OutputExcelLocation.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 # ReportDrivingSurvey
 KPI_ReportDrivingSurvey = KPITable('KPI_ReportDrivingSurvey')
@@ -61,7 +68,6 @@ KPI_ReportSummary.add_column(DBColumn('BoundarySubplant', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
-
 
 # Peak SAT Location
 KPI_PeakSATLocation = KPITable('KPI_PeakSATLocation')
@@ -136,8 +142,6 @@ KPI_SurveySummary.add_column(DBColumn('IdleTimeMinutes', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('ActiveTimeMinutes', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('AvgSpeedKm', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
-
-#Leak Summary Table
 
 #KPI Table
 KPI_Definition = KPITable('KPI_Definition')

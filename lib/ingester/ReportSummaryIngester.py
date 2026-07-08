@@ -69,7 +69,6 @@ class ReportSummaryIngester(Ingester):
             self.starting_date = STARTING_DATE
 
     def query_data(self):
-
         if self.check_flag:
             query = get_reports(self.customer_info['Name'], starting_date=self.starting_date, final_checkbox = True)
             LSDB_COLS = [

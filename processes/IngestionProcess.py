@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(directory, "..")))
 from lib.ingester.ReportSummaryIngester import ReportSummaryIngester
 from lib.ingester.SurveySummaryIngester import SurveySummaryIngester
 from lib.ingester.EmissionSourceSummaryIngester import EmissionSourceSummaryIngester
-from lib.ingester.PeakSATSummaryIngester import PeakSATSummaryIngester
+from lib.ingester.PeakSATIngester import PeakSATIngester
 
 from lib.KPIHubConnection import *
 from lib.handlers.CustomerHandler import get_customer_list
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     emissionSourceIngester.push_data()
     emissionSourceIngester.sanity_check()
 
-    peakSATIngester = PeakSATSummaryIngester(arguments)
+    peakSATIngester = PeakSATIngester(arguments)
     peakSATIngester.set_customer_info(customer_list.iloc[0])
     peakSATIngester.update_check()
     peakSATIngester.query_data()
