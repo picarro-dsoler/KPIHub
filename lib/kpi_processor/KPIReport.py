@@ -96,6 +96,20 @@ class KPISummary:
 
         return output
 
+class KPIPeakSAT(KPISummary):
+    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'WeekNumber'}):
+        super().__init__(customer_name, aggregator, period_dict)
+        self.tableList = [KPI_PeakAboveSAT]
+
+    def query_table(self):
+        for table in self.tableList:
+            self.data[table] = Query(query = f"SELECT * FROM {table.name} WHERE CustomerId IN (SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}')").execute([KPIHub_Conn])
+
+    def processor(self, df):
+        return pd.Series({
+            'PeakAboveSATCount': df['PeakId'].count()
+        })
+
 class KPIReport(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(customer_name, aggregator, period_dict)

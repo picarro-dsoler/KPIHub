@@ -73,10 +73,13 @@ class Ingester:
         pass
 
     def push_data(self, primary_key = 'ReportId'):
-        # Fix db path to go two parent folders before pointing to database/KPIHUB.db
-        db_path = os.path.abspath(os.path.join(directory, "..", "..", "database", "KPIHub.db"))
-        self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': primary_key})
-        self.Logger.info(f"Data pushed to {db_path}")
+        if self.check_flag:
+            # Fix db path to go two parent folders before pointing to database/KPIHUB.db
+            db_path = os.path.abspath(os.path.join(directory, "..", "..", "database", "KPIHub.db"))
+            self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': primary_key})
+            self.Logger.info(f"Data pushed to {db_path}")
+        else:
+            self.Logger.info(f"No data to push")
 
     def sanity_check(self):
         self.Logger.info(f"Sanity checking data for {self.name}")

@@ -22,20 +22,21 @@ from datetime import timedelta
 import pandas as pd
 
 if __name__ == "__main__":
-   # reportKPI = KPIReport('Cadent', aggregator = {'BonudaryRegion': 'BoundaryRegion'})
-   # reportKPI.query_table()
-  #  reportKPI.process_data()
-   # reportKPI.push_data()
+    reportKPI = KPIReport('Cadent', aggregator = {'BonudaryRegion': 'BoundaryRegion'})
+    reportKPI.query_table()
+    reportKPI.process_data()
+    reportKPI.push_data()
 
-    #print(reportKPI.data['output'])
-   # print(reportKPI.aggregator)
-    #emissionSourceKPI = KPIEmissionSource('Cadent')
-    #emissionSourceKPI.query_table()
-    #emissionSourceKPI.process_data()
-    #emissionSourceKPI.push_data()
+    print(reportKPI.data['output'])
+    print(reportKPI.aggregator)
 
-    #print(emissionSourceKPI.data['output'])
-    #print(emissionSourceKPI.aggregator)
+    emissionSourceKPI = KPIEmissionSource('Cadent')
+    emissionSourceKPI.query_table()
+    emissionSourceKPI.process_data()
+    emissionSourceKPI.push_data()
+
+    print(emissionSourceKPI.data['output'])
+    print(emissionSourceKPI.aggregator)
 
     surveyKPI = KPISurveySummary('Cadent', aggregator = {'BoundaryRegion': 'BoundaryRegion'})
     
@@ -45,3 +46,5 @@ if __name__ == "__main__":
 
     print(surveyKPI.data['output'])
     print(surveyKPI.aggregator)
+
+    

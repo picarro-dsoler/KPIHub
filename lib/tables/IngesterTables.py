@@ -1,5 +1,6 @@
 from locallib.picarrodb import *
 import sqlite3
+
 from .KPITable import KPITable
 
 
@@ -61,6 +62,35 @@ KPI_ReportSummary.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
+
+# Peak SAT Location
+KPI_PeakSATLocation = KPITable('KPI_PeakSATLocation')
+KPI_PeakSATLocation.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
+KPI_PeakSATLocation.add_column(DBColumn('BoxFileId', datatype='int'))
+KPI_PeakSATLocation.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+# Peak Above SAT Table
+KPI_PeakAboveSAT = KPITable('KPI_PeakAboveSAT')
+KPI_PeakAboveSAT.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='foreign'))
+KPI_PeakAboveSAT.add_column(DBColumn('PeakName', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('PeakId', datatype='uniqueidentifier', key='primary'))
+KPI_PeakAboveSAT.add_column(DBColumn('Date', datatype='date'))
+KPI_PeakAboveSAT.add_column(DBColumn('ReportYear', datatype='int'))
+KPI_PeakAboveSAT.add_column(DBColumn('WeekNumber', datatype='int'))
+KPI_PeakAboveSAT.add_column(DBColumn('Disposition', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('LocalTime', datatype='datetime'))
+KPI_PeakAboveSAT.add_column(DBColumn('BoundaryName', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('EmissionRate', datatype='float'))
+KPI_PeakAboveSAT.add_column(DBColumn('PeakGpsLatitude', datatype='float'))
+KPI_PeakAboveSAT.add_column(DBColumn('PeakGpsLongitude', datatype='float'))
+KPI_PeakAboveSAT.add_column(DBColumn('Easting', datatype='float'))
+KPI_PeakAboveSAT.add_column(DBColumn('Northing', datatype='float'))
+KPI_PeakAboveSAT.add_column(DBColumn('UserName', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('SurveyorUnit', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('AnalyzerSerialNumber', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('Hyperlink', datatype='nvarchar'))
+KPI_PeakAboveSAT.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 
 # Emission Source Summary Table

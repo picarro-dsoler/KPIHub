@@ -111,7 +111,7 @@ def summarize_emission(group):
 
 if __name__ == "__main__":
     arguments = {'conn': KPIHub_Conn}
-    ingester = ReportSummaryIngester(arguments)
+    ingester = EmissionSourceSummaryIngesters(arguments)
     ingester.set_customer_info(ingester.customer_list.iloc[0])
     ingester.query_data()
     ingester.push_data()
