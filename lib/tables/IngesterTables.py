@@ -23,7 +23,7 @@ KPI_POR.add_column(DBColumn('Value', datatype='float'))
 KPI_POR.add_column(DBColumn('Unit', datatype='nvarchar'))
 KPI_POR.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
-# Output Excel Locations
+# Output Excel Locations Here you need a folder
 KPI_OutputExcelLocation = KPITable('KPI_OutputExcelLocation')
 KPI_OutputExcelLocation.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
 KPI_OutputExcelLocation.add_column(DBColumn('BoxFolderId', datatype='nvarchar'))
@@ -69,7 +69,7 @@ KPI_ReportSummary.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
-# Peak SAT Location
+# Peak SAT Location here you need a file)
 KPI_PeakSATLocation = KPITable('KPI_PeakSATLocation')
 KPI_PeakSATLocation.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
 KPI_PeakSATLocation.add_column(DBColumn('BoxFileId', datatype='int'))

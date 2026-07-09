@@ -130,10 +130,13 @@ class KPIPOR(KPISummary):
             df = self.data[self.tableList[0]].groupby(self.aggregator).agg({
                 'AssetCoveredLengthKm': 'sum',
             })
-            df['CumulativeAssetCoveredLengthKm'] = df['AssetCoveredLengthKm'].cumsum()
+            # Calculate cumulative sum for each year (dot this sum just for the current year)
+            df['CumulativeAssetCoveredLengthKm'] = df.groupby('ReportYear')['AssetCoveredLengthKm'].cumsum()
+     
             df.drop(columns=['AssetCoveredLengthKm'], inplace=True)
-            df['POR'] = df['CumulativeAssetCoveredLengthKm'] / por_summary_df['Value']
-            df['POR'] = 100*df['POR'].round(2)
+            df['POR'] = por_summary_df['Value']
+            df['CurrentCompletion'] = df['CumulativeAssetCoveredLengthKm'] / df['POR']
+            df['CurrentCompletion'] = 100*(df['CurrentCompletion'].round(2))
             df['CumulativeAssetCoveredLengthKm'] = df['CumulativeAssetCoveredLengthKm'].round(2)
 
             self.data['output'] = df
@@ -153,6 +156,7 @@ class KPIPeakSAT(KPISummary):
     def processor(self, df):
         return pd.Series({
             'PeakAboveSATCount': df['PeakId'].count()
+       
         })
 
 class KPIReport(KPISummary):
@@ -162,7 +166,7 @@ class KPIReport(KPISummary):
 
     def processor(self, df):
         out = {
-            'FOVMain': df['DistributionPipeCoveredKm'].sum()/df['DistributionPipeKm'].sum(),
+            'FOVMain': 100*df['DistributionPipeCoveredKm'].sum()/df['DistributionPipeKm'].sum(),
             'ReportAssetLengthKm': df['ReportAssetLengthKm'].sum() if 'ReportAssetLengthKm' in df else None,
             'AssetCoveredLengthKm': df['AssetCoveredLengthKm'].sum() if 'AssetCoveredLengthKm' in df else None,
             'DistributionPipeKm': df['DistributionPipeKm'].sum() if 'DistributionPipeKm' in df else None,
@@ -197,20 +201,20 @@ class KPIEmissionSource(KPISummary):
         out["InstatanoeusEmission"] = out["EmissionRate"] / denom if denom else None
         out["B0Density"] = out["B0Count"] / denom if denom else None
         out["B1Density"] = out["B1Count"] / denom if denom else None
-        out["B-1Density"] = out["Bm1Count"] / denom if denom else None
-        out["B-2Density"] = out["Bm2Count"] / denom if denom else None
+        out["Bm1Density"] = out["Bm1Count"] / denom if denom else None
+        out["Bm2Density"] = out["Bm2Count"] / denom if denom else None
         out["NGDensity"] = out["NGCount"] / denom if denom else None
         out["PGDensity"] = out["PGCount"] / denom if denom else None
 
         total_sum = out['NGCount'] + out['Not_NGCount'] + out['PGCount']
 
-        out["B0Share"] = out["B0Count"] / lisa_count if lisa_count else None
-        out["B1Share"] = out["B1Count"] / lisa_count if lisa_count else None
-        out["B-1Share"] = out["Bm1Count"] / lisa_count if lisa_count else None
-        out["B-2Share"] = out["Bm2Count"] / lisa_count if lisa_count else None
-        out["NGShare"] = out["NGCount"] / total_sum if total_sum else None
-        out["PGShare"] = out["PGCount"] / total_sum if total_sum else None
-        out["Not_NGShare"] = out["Not_NGCount"] / total_sum if total_sum else None
+        out["B0Share"] = 100*out["B0Count"] / lisa_count if lisa_count else None
+        out["B1Share"] = 100*out["B1Count"] / lisa_count if lisa_count else None
+        out["Bm1Share"] = 100*out["Bm1Count"] / lisa_count if lisa_count else None
+        out["Bm2Share"] = 100*out["Bm2Count"] / lisa_count if lisa_count else None
+        out["NGShare"] = 100*out["NGCount"] / total_sum if total_sum else None
+        out["PGShare"] = 100*out["PGCount"] / total_sum if total_sum else None
+        out["Not_NGShare"] = 100*out["Not_NGCount"] / total_sum if total_sum else None
         return pd.Series(out)
 
 class KPISurveySummary(KPISummary):
@@ -221,15 +225,15 @@ class KPISurveySummary(KPISummary):
     def processor(self, df):
         customer_utilization = {'Hours':7, 'Days':7}
         if hasattr(df, 'name') and df.name is not None:
-            group_year = df.name[0]
-            group_week_range = df.name[1]
+            group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
+            name_map = dict(zip(self.aggregator, group_keys))
+            group_year = name_map.get('ReportYear')
+            group_week_range = name_map.get('ReportWeek')
         else:
             group_year, group_week_range = None, None
-        current_year = datetime.now().year
 
-        current_week = datetime.now().isocalendar()[1]
         if group_year is not None and group_week_range is not None:
-            day_count = days_in_week_range(group_week_range, current_year)
+            day_count = days_in_week_range(group_week_range, group_year)
         else:
             day_count = None
 
@@ -238,15 +242,14 @@ class KPISurveySummary(KPISummary):
         surveyDurationHours = df['SurveyDurationMinutes'].sum()/60
         targetTimeHours = day_count*customer_utilization['Hours']*no_surveyors
         starndardTargetTimeHours = 6*5*25
-        #targetTimeHours = 7*7*25
         surveyCount = df['SurveyId'].nunique()
         avg_speed_weighted = df['AvgSpeedKm'] * df['TotalSegments']
         #print(df.name, no_surveyors, surveyCount)
         return pd.Series({
             'SurveyDurationHours': surveyDurationHours,
             'TargetDurationHours': targetTimeHours,
-            'CustomerUtilization': surveyDurationHours/targetTimeHours,
-            'StarndardUtilization': surveyDurationHours/starndardTargetTimeHours,
+            'CustomerUtilization': 100*surveyDurationHours/targetTimeHours,
+            'StarndardUtilization': 100*surveyDurationHours/starndardTargetTimeHours,
             'TotalSurveyors': no_surveyors,
             'ProductivityPerSurveyor': unique_reports['DistributionPipeCoveredKm'].sum()/no_surveyors,
             'SurveyCount': surveyCount,
