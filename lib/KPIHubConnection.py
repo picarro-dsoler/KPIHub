@@ -12,11 +12,19 @@ directory = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.abspath(os.path.join(directory, "..")))
 sys.path.append(os.path.abspath(os.path.join(directory)))
 
+
+def connect_sqlite(db_path):
+    conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+
 class SQLiteConnection(PConnection):
     def __init__(self, host):
         self.host = host
         self.dbtype = 'sqlite'
-        self.engine = sqlite3.connect(host)
+        self.engine = connect_sqlite(host)
 
 # Ensure path to DB is relative to this file's directory
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", DB_PATH))

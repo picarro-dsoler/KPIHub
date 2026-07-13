@@ -23,38 +23,46 @@ import pandas as pd
 
 if __name__ == "__main__":
 
-    customer = 'Cadent'
-    aggregator = {'BoundaryRegion': 'BoundaryRegion'}
+    customer_list = get_customer_list(KPIHub_Conn)
+    for _, customer in customer_list.iterrows():
+        print("--------------------------------")
+        print(customer['Name'])
+        customer_name = customer['Name']
+        aggregator = {'BoundaryRegion': 'BoundaryRegion'}
 
-    #Set the global KPI
-    print("Setting the global KPI")
-    reportKPI = KPIReport(customer)
-    emissionSourceKPI = KPIEmissionSource(customer)
-    surveyKPI = KPISurveySummary(customer)
-    peakSATKPI = KPIPeakSAT(customer)
-    POR_KPI = KPIPOR(customer)
-
-    KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI, POR_KPI]
-    for KPI in KPI_List:
-        print(KPI)
-        KPI.query_table()
-        KPI.process_data()
-        KPI.push_data()
-
-        print(KPI.data['output'])
-        print(KPI.aggregator)
-
-    #Set the regional KPI
-    print("Setting the regional KPI")
-    reportKPI = KPIReport(customer, aggregator)
-    emissionSourceKPI = KPIEmissionSource(customer, aggregator)
-    surveyKPI = KPISurveySummary(customer, aggregator)
-    peakSATKPI = KPIPeakSAT(customer, aggregator)
-    KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
-    for KPI in KPI_List:
-        KPI.query_table()
-        KPI.process_data()
-        KPI.push_data()
-
-        print(KPI.data['output'])
-        print(KPI.aggregator)
+        #Set the global KPI
+        print("Setting the global KPI")
+        reportKPI = KPIReport(customer_name)
+        emissionSourceKPI = KPIEmissionSource(customer_name)
+        surveyKPI = KPISurveySummary(customer_name)
+        POR_KPI = KPIPOR(customer_name)
+        if customer['Name'] == 'Cadent':
+            peakSATKPI = KPIPeakSAT(customer_name)
+            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI, POR_KPI]
+        else:
+            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, POR_KPI]
+        for KPI in KPI_List:
+            print(KPI.name)
+            KPI.query_table()
+            KPI.process_data()
+            KPI.push_data()
+        print("--------------------------------")
+        #Set the regional KPI
+        print("Setting the regional KPI")
+        try:
+            reportKPI = KPIReport(customer_name, aggregator)
+            emissionSourceKPI = KPIEmissionSource(customer_name, aggregator)
+            surveyKPI = KPISurveySummary(customer_name, aggregator)
+            if customer['Name'] == 'Cadent':
+                peakSATKPI = KPIPeakSAT(customer_name, aggregator)
+                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
+            else:
+                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI]
+            for KPI in KPI_List:
+                print(KPI.name)
+                KPI.query_table()
+                KPI.process_data()
+                KPI.push_data()
+        except Exception as e:
+            print(f"Error setting the regional KPI for {customer_name}: {e}")
+            print("--------------------------------")

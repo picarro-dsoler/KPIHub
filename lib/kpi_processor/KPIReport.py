@@ -24,6 +24,7 @@ from datetime import timedelta
 from functools import reduce
 class KPISummary:
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        self.name = 'KPISummary'
         self.base_time = {'Year': 'ReportYear'}
         self.period_dict = period_dict
         self.data = {}
@@ -100,6 +101,7 @@ class KPIPOR(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(customer_name, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary]
+        self.name = 'KPIPOR'
     
     def process_data(self, on='ReportId'):
         #Query the POR
@@ -148,7 +150,7 @@ class KPIPeakSAT(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'WeekNumber'}):
         super().__init__(customer_name, aggregator, period_dict)
         self.tableList = [KPI_PeakAboveSAT]
-
+        self.name = 'KPIPeakSAT'
     def query_table(self):
         for table in self.tableList:
             self.data[table] = Query(query = f"SELECT * FROM {table.name} WHERE CustomerId IN (SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}')").execute([KPIHub_Conn])
@@ -163,7 +165,7 @@ class KPIReport(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(customer_name, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary]
-
+        self.name = 'KPIReport'
     def processor(self, df):
         out = {
             'FOVMain': 100*df['DistributionPipeCoveredKm'].sum()/df['DistributionPipeKm'].sum(),
@@ -181,7 +183,7 @@ class KPIEmissionSource(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(customer_name, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary,KPI_EmissionSourceSummary]
-
+        self.name = 'KPIEmissionSource'
     def processor(self, df):
         denominator = 'DistributionPipeCoveredKm'
         out = {}
@@ -221,9 +223,14 @@ class KPISurveySummary(KPISummary):
     def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(customer_name, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary,KPI_SurveySummary]
+        self.name = 'KPISurveySummary'
+    def query_table(self):
+        super().query_table()
+        self.data['KPI_Utilization'] = Query(query = f"SELECT * FROM KPI_Utilization WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
 
     def processor(self, df):
-        customer_utilization = {'Hours':7, 'Days':7}
+        hours = self.data['KPI_Utilization']['WorkingHours'].values[0]
+        days = self.data['KPI_Utilization']['WorkingDays'].values[0]
         if hasattr(df, 'name') and df.name is not None:
             group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
             name_map = dict(zip(self.aggregator, group_keys))
@@ -233,15 +240,15 @@ class KPISurveySummary(KPISummary):
             group_year, group_week_range = None, None
 
         if group_year is not None and group_week_range is not None:
-            day_count = days_in_week_range(group_week_range, group_year)
+            day_count = days_in_week_range(group_week_range, group_year, days)
         else:
             day_count = None
 
         unique_reports = df.drop_duplicates(subset=['ReportId'])
         no_surveyors = df['SurveyorUnit'].nunique()
         surveyDurationHours = df['SurveyDurationMinutes'].sum()/60
-        targetTimeHours = day_count*customer_utilization['Hours']*no_surveyors
-        starndardTargetTimeHours = 6*5*25
+        targetTimeHours = day_count*hours*no_surveyors
+        starndardTargetTimeHours = 6*5*no_surveyors
         surveyCount = df['SurveyId'].nunique()
         avg_speed_weighted = df['AvgSpeedKm'] * df['TotalSegments']
         #print(df.name, no_surveyors, surveyCount)
@@ -267,7 +274,7 @@ class KPISurveySummary(KPISummary):
         })
 
 
-def days_in_week_range(week_number, year):
+def days_in_week_range(week_number, year, max_days = 7):
     """
     Helper to count days in a week. If it's the current week, return days up to today.
     week_number: int week number (ISO, 1-53).
@@ -280,7 +287,7 @@ def days_in_week_range(week_number, year):
         start_date = date.fromisocalendar(int(year), int(week_number), 1)
     except Exception:
         # If not a valid ISO week/year, fall back to 7
-        return 7
+        return max_days
 
     # End on Sunday
     end_date = start_date + timedelta(days=6)
@@ -292,4 +299,4 @@ def days_in_week_range(week_number, year):
         delta = (today - start_date).days + 1  # include today
         return min(max(delta, 0), 7)
     else:
-        return 7
+        return max_days

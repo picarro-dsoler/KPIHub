@@ -16,3 +16,6 @@ CONN_DICT = {'EU1':EU1_Conn, 'EU2': EU2_Conn}
 SUNRISE_TIME = 6
 SUNSET_TIME = 20
 SPEED_THRESHOLD = 0.5
+
+#Excel Output Configuration
+SUFFIX = '_E_KPI'

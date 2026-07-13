@@ -34,6 +34,11 @@ class PeakSATIngester(Ingester):
         #Get the data from box
         data = Query(query = f"SELECT * FROM KPI_PeakSATLocation WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
         box_file_id = data.iloc[0]['BoxFileId']
+        if box_file_id is None:
+            self.Logger.info(f"No data found in KPI_PeakSATLocation for customer: {self.customer_info['Name']}")
+            self.check_flag = True
+            return
+        
         box_obj = BoxFile(local_path='temp.xlsx', box_file_id =box_file_id)
         box_obj.download()
         df = pd.read_excel('temp.xlsx')
@@ -50,6 +55,7 @@ class PeakSATIngester(Ingester):
             self.Logger.info(f"Data mismatch in KPI_PeakAboveSAT for customer: {self.customer_info['Name']}")
             self.Logger.info(f"Number of rows in KPI_PeakAboveSAT: {len(df_db)}")
             self.Logger.info(f"Number of rows in Box: {len(df)}")
+            self.data['Box'] = df
             self.check_flag = True
         else:
             self.Logger.info(f"Data matches in KPI_PeakAboveSAT for customer: {self.customer_info['Name']}")

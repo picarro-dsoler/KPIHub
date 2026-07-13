@@ -6,6 +6,7 @@
 *.json
 *.xlsx
 *.csv
+!CustomerInfo.csv
 *.txt
 *.log
 *.pdf
