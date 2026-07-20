@@ -41,11 +41,16 @@ if __name__ == "__main__":
             KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI, POR_KPI]
         else:
             KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, POR_KPI]
-        for KPI in KPI_List:
-            print(KPI.name)
-            KPI.query_table()
-            KPI.process_data()
-            KPI.push_data()
+        try:
+            for KPI in KPI_List:
+                print(KPI.name)
+                KPI.query_table()
+                KPI.process_data()
+                KPI.push_data()
+            print("Global KPI set successfully")
+        except Exception as e:
+            print(f"Error setting the global KPI for {customer_name}: {e}")
+            print("--------------------------------")
         print("--------------------------------")
         #Set the regional KPI
         print("Setting the regional KPI")

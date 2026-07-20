@@ -32,13 +32,18 @@ def add_customer_utilization(customer_name, working_hours = 0, working_days = 0,
         data['LastUpdated'] = datetime.now()
         KPI_Utilization.update_table(arguments = {'DataFrame': data, 'db_path': DB_PATH, 'PrimaryKey': ['CustomerId']})
 
-def add_por(customer_name, year, value, unit = 'Km', Conn = KPIHub_Conn):
+def add_por(customer_name, year, value, unit = 'Km', StartingDate = None, EndingDate = None, Description = None, Conn = KPIHub_Conn):
     customer_id = Query(query = f"SELECT CustomerId FROM KPI_Customer WHERE Name = '{customer_name}'").execute(Conn)
     if customer_id.empty:
         raise ValueError(f"Customer {customer_name} not found")
+    if StartingDate is None or EndingDate is None or Description is None:
+        raise ValueError("StartingDate, EndingDate, and Description are required")
     else:
+        StartingDate = datetime.strptime(StartingDate, '%d-%m-%Y')
+        EndingDate = datetime.strptime(EndingDate, '%d-%m-%Y')
+        Description = Description.replace("'", "''")
         customer_id = customer_id.iloc[0]['CustomerId']
-        data = pd.DataFrame({'CustomerId': [customer_id], 'Year': [year], 'Value': [value], 'Unit': [unit]})
+        data = pd.DataFrame({'CustomerId': [customer_id], 'Year': [year], 'Value': [value], 'Unit': [unit], 'StartingDate': [StartingDate], 'EndingDate': [EndingDate], 'Description': [Description]})
         data['LastUpdated'] = datetime.now()
         KPI_POR.update_table(arguments = {'DataFrame': data, 'db_path': DB_PATH, 'PrimaryKey': ['CustomerId', 'Year']})
 

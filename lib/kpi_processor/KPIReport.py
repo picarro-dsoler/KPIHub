@@ -104,44 +104,77 @@ class KPIPOR(KPISummary):
         self.name = 'KPIPOR'
     
     def process_data(self, on='ReportId'):
-        #Query the POR
-        por = Query(query = f"SELECT * FROM KPI_POR WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
-        if por.empty:
-            raise ValueError(f"POR not found for customer {self.customer_name}")
+        PORData = Query(query = f"SELECT * FROM KPI_POR WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
+        PORValue = PORData['Value'].values[0]
+        # Attach POR value to agg_df as a new column named 'POR'
+        if PORValue == 0:
+            raise ValueError(f"POR not found for {self.customer_name}")
         else:
-            # Get the years and fill a dataframe like: reportyear, reportweek, value
+            reports = self.data[KPI_ReportSummary]
+            # -- Fix: Filter reports that are within ANY PORData period, accounting for multiple periods --
+            mask = reports.apply(
+                lambda row: any(
+                    pd.to_datetime(row['ReportDate']) >= pd.to_datetime(por_row['StartingDate']) and
+                    pd.to_datetime(row['ReportDate']) <= pd.to_datetime(por_row['EndingDate'])
+                    for _, por_row in PORData.iterrows()
+                ),
+                axis=1
+            )
+            PORReports = reports[mask]
             report_years = []
             report_weeks = []
             values = []
 
-            for _, row in por.iterrows():
-                # Generate all 52 weeks per year (assuming week numbers 1-52)
-                year = row['Year']
+            for _, row in PORData.iterrows():
                 value = row['Value']
-                for week in range(1, 53):
-                    report_years.append(year)
-                    report_weeks.append(week)
-                    values.append(value)
+                start_date = pd.to_datetime(row['StartingDate'])
+                end_date = pd.to_datetime(row['EndingDate'])
 
-            por_summary_df = pd.DataFrame({
-                'ReportYear': report_years,
-                'ReportWeek': report_weeks,
-                'Value': values
-            }).set_index(['ReportYear', 'ReportWeek'])
-       
-            df = self.data[self.tableList[0]].groupby(self.aggregator).agg({
+                start_year = start_date.year
+                end_year = end_date.year
+
+                for year in range(start_year, end_year + 1):
+                    if year == start_year:
+                        first_week_date = start_date
+                    else:
+                        first_week_date = pd.to_datetime(f"{year}-01-01")
+
+                    if year == end_year:
+                        last_week_date = end_date
+                    else:
+                        last_week_date = pd.to_datetime(f"{year}-12-31")
+
+                    week_date = first_week_date
+                    week_date = week_date - pd.Timedelta(days=week_date.weekday())  # previous Monday
+
+                    while week_date <= last_week_date:
+                        iso_calendar = week_date.isocalendar()
+                        week_number = iso_calendar.week
+                        year_number = iso_calendar.year
+                        if year_number == year:
+                            report_years.append(year)
+                            report_weeks.append(week_number)
+                            values.append(value)
+                        week_date = week_date + pd.Timedelta(weeks=1)
+
+                por_summary_df = pd.DataFrame({
+                    'ReportYear': report_years,
+                    'ReportWeek': report_weeks,
+                    'POR': values
+                }).set_index(['ReportYear', 'ReportWeek'])
+
+                # Perform the aggregation and assign to a new DataFrame to avoid SettingWithCopyWarning
+            agg_df = PORReports.groupby(self.aggregator).agg({
                 'AssetCoveredLengthKm': 'sum',
             })
-            # Calculate cumulative sum for each year (dot this sum just for the current year)
-            df['CumulativeAssetCoveredLengthKm'] = df.groupby('ReportYear')['AssetCoveredLengthKm'].cumsum()
-     
-            df.drop(columns=['AssetCoveredLengthKm'], inplace=True)
-            df['POR'] = por_summary_df['Value']
-            df['CurrentCompletion'] = df['CumulativeAssetCoveredLengthKm'] / df['POR']
-            df['CurrentCompletion'] = 100*(df['CurrentCompletion'].round(2))
-            df['CumulativeAssetCoveredLengthKm'] = df['CumulativeAssetCoveredLengthKm'].round(2)
 
-            self.data['output'] = df
+            agg_df['CumulativeAssetCoveredLengthKm'] = agg_df.groupby('ReportYear')['AssetCoveredLengthKm'].cumsum()
+
+            agg_df = agg_df.join(por_summary_df, how="left")
+            agg_df['CurrentCompletion'] = agg_df['CumulativeAssetCoveredLengthKm'] / agg_df['POR']
+            agg_df['CurrentCompletion'] = (100*(agg_df['CurrentCompletion'])).round(2)
+            agg_df.drop(columns=['AssetCoveredLengthKm'], inplace=True)
+            self.data['output'] = agg_df
 
             self.melter()
 
