@@ -20,17 +20,6 @@ from lib.handlers.CustomerHandler import *
 from lib.config import *
 from lib.KPIHubConnection import *
 
-#Add customer
-add_customer('Cadent',EU2_Conn)
-
-#Add KPI Utilization
-
-#Add KPI Output Excel Location
-add_output_excel_location('Cadent', 370307867916, KPIHub_Conn)
-
-#Add KPI POR
-add_por('Cadent', 2026, 127000, 'Km',KPIHub_Conn)
-
 #Add KPI SAT Config
 add_peak_sat_file_id('Cadent', 2206415797785, KPIHub_Conn)
 
