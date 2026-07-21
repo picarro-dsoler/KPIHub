@@ -14,9 +14,17 @@ sys.path.append(os.path.abspath(os.path.join(directory)))
 
 
 def connect_sqlite(db_path):
+    """Open a SQLite connection used by KPIHub.
+
+    Geometry columns (datatype='geometry' in table defs) are stored as WKT TEXT.
+    Values should be written as WKT strings (e.g. from SQL Server Shape.STAsText()
+    or shapely .wkt); SpatiaLite is not required.
+    """
     conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
     conn.execute("PRAGMA busy_timeout = 30000")
     conn.execute("PRAGMA journal_mode = WAL")
+    # Text factory keeps WKT geometry values as str when reading back.
+    conn.text_factory = str
     return conn
 
 

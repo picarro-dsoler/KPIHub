@@ -21,18 +21,23 @@ from lib.config import *
 from lib.KPIHubConnection import *
 
 #Add customer
-add_customer('Cadent',EU2_Conn)
-
+add_customer('Westnetz',EU1_Conn)
 #Add KPI Utilization
-
 #Add KPI Output Excel Location
-add_output_excel_location('Cadent', 370307867916, KPIHub_Conn)
+add_output_excel_location('Westnetz', 398249270000, KPIHub_Conn)
 
 #Add KPI POR
-add_por('Cadent', 2026, 127000, 'Km',KPIHub_Conn)
+add_por(
+    customer_name = 'Westnetz',
+    year = 2026,
+    value = 127000,
+    StartingDate = '01-01-2026',
+    EndingDate = '31-12-2026',
+    Description = ''
+)
 
-#Add KPI SAT Config
-add_peak_sat_file_id('Cadent', 2206415797785, KPIHub_Conn)
+#Add KP Utilization
+add_customer_utilization('Westnetz', 6, 5, 2, KPIHub_Conn)
 
 #Add KPI Definition
 output_dict={

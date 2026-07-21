@@ -85,6 +85,7 @@ class ReportSummaryIngester(Ingester):
                 'DistributionPipeCoveredKm',
                 'ServicePipeKm',
                 'ServicePipeCoveredKm',
+                'ReportArea',
             ]
 
             DATAHUB_COLS = ['ReportId', 'BoundaryName', 'BoundaryType', 'BoundaryMode', 'BoundaryPlant', 'BoundarySubplant', 'BoundaryRegion', 'BoundarySubRegion']

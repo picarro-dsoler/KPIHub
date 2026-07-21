@@ -4,16 +4,47 @@ import uuid
 from datetime import date, datetime, time
 import pandas as pd
 
+
+# SQL Server-style datatypes -> SQLite column types.
+# geometry is stored as WKT text (from Shape.STAsText() / shapely .wkt).
+SQLITE_TYPE_MAP = {
+    'geometry': 'TEXT',
+}
+
+
+def _connect(db_path):
+    """SQLite connection used by KPITable (same pragmas as KPIHubConnection)."""
+    try:
+        from lib.KPIHubConnection import connect_sqlite
+        return connect_sqlite(db_path)
+    except ImportError:
+        try:
+            from KPIHubConnection import connect_sqlite
+            return connect_sqlite(db_path)
+        except ImportError:
+            conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
+            conn.execute("PRAGMA busy_timeout = 30000")
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.text_factory = str
+            return conn
+
+
 class KPITable(DBTable):
     def __init__(self, name, columns = None):
         super().__init__(name, columns)
+
+    @staticmethod
+    def sqlite_column_type(datatype):
+        if datatype is None:
+            return 'TEXT'
+        return SQLITE_TYPE_MAP.get(datatype, datatype)
     
     def delete_table(self, arguments = None):
         if arguments is None:
             raise ValueError("Arguments are required")
         if 'db_path' not in arguments:
             raise ValueError("db_path is required")
-        conn = sqlite3.connect(arguments['db_path'])
+        conn = _connect(arguments['db_path'])
         cursor = conn.cursor()
         cursor.execute(f"DROP TABLE IF EXISTS {self.name}")
         conn.commit()
@@ -25,12 +56,13 @@ class KPITable(DBTable):
             raise ValueError("Arguments are required")
         if 'db_path' not in arguments:
             raise ValueError("db_path is required")
-        conn = sqlite3.connect(arguments['db_path'])
+        conn = _connect(arguments['db_path'])
         cursor = conn.cursor()
         col_defs_list = []
         primary_keys = []
         for column in self.columns:
-            col_def = f"{column.name} {column.datatype}"
+            sqlite_type = self.sqlite_column_type(column.datatype)
+            col_def = f"{column.name} {sqlite_type}"
             if getattr(column, "key", None) == "primary":
                 primary_keys.append(column.name)
             col_defs_list.append(col_def)
@@ -63,8 +95,9 @@ class KPITable(DBTable):
             raise ValueError("Arguments are required")
         if 'db_path' not in arguments:
             raise ValueError("db_path is required")
-        df = pd.read_sql_query(f"SELECT * FROM {self.name}", sqlite3.connect(arguments['db_path']))
-   
+        conn = _connect(arguments['db_path'])
+        df = pd.read_sql_query(f"SELECT * FROM {self.name}", conn)
+        conn.close()
         return df
 
     def update_table(self, arguments = None):
@@ -81,7 +114,7 @@ class KPITable(DBTable):
         else:
             raise ValueError("PrimaryKey must be a list of strings or a single string")
 
-        conn = sqlite3.connect(arguments['db_path'])
+        conn = _connect(arguments['db_path'])
         cursor = conn.cursor()
 
         cols = df.columns.tolist()
@@ -110,6 +143,11 @@ class KPITable(DBTable):
                 return val.isoformat()
             if isinstance(val, uuid.UUID):
                 return str(val)
+            # Shapely / geo geometries -> WKT text for SQLite geometry columns
+            if hasattr(val, "wkt") and not isinstance(val, (str, bytes, bytearray)):
+                return val.wkt
+            if isinstance(val, (bytes, bytearray)):
+                return bytes(val)
             if hasattr(val, "item"):  # handles numpy scalars
                 return val.item()
             return val
@@ -119,4 +157,3 @@ class KPITable(DBTable):
 
         conn.commit()
         conn.close()
- 

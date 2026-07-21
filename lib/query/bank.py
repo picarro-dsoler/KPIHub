@@ -39,6 +39,7 @@ def get_reports(customer_name, table_name = None, starting_date=None, final_chec
         R.DateStarted AS ReportDate,
         RA.ExternalId AS BoundaryName,
         RA.BoundaryType AS BoundaryType,
+        RA.Shape.STAsText() AS ReportArea,
         RAC.AssetLengthKM AS ReportAssetLengthKm,
         RC.PercentCoverageAssets AS ReportPercentCoverageAssets,
         RAC.AssetLengthKM * RC.PercentCoverageAssets AS AssetCoveredLengthKm,

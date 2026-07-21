@@ -75,7 +75,8 @@ class Ingester:
     def push_data(self, primary_key = 'ReportId'):
         if self.check_flag:
             # Fix db path to go two parent folders before pointing to database/KPIHUB.db
-            db_path = os.path.abspath(os.path.join(directory, "..", "..", "database", "KPIHub.db"))
+            db_path = os.path.abspath(os.path.join(directory, "..", "..", DB_PATH))
+       
             self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': primary_key})
             self.Logger.info(f"Data pushed to {db_path}")
         else:

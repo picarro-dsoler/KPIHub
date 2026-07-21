@@ -67,6 +67,7 @@ KPI_ReportSummary.add_column(DBColumn('BoundaryPlant', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundarySubplant', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundaryRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('ReportArea', datatype='geometry'))
 KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 # Peak SAT Location here you need a file)
@@ -141,6 +142,7 @@ KPI_SurveySummary.add_column(DBColumn('SegmentDurationMinutes', datatype='float'
 KPI_SurveySummary.add_column(DBColumn('IdleTimeMinutes', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('ActiveTimeMinutes', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('AvgSpeedKm', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('SharedSurvey', datatype='int'))
 KPI_SurveySummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 #KPI Table
