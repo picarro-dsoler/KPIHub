@@ -77,9 +77,14 @@ class KPISummary:
         period_dict_values = list(self.period_dict.values())
         period_dict_keys = list(self.period_dict.keys())
         base_time_values = list(self.base_time.values())
-        r_long = r_long.rename(columns={period_dict_values[0]: 'PeriodValue', base_time_values[0]: 'Year'})
-   
-        r_long['PeriodType'] = period_dict_keys[0]
+        base_time_keys = list(self.base_time.keys())
+        if len(period_dict_values) > 0:
+            r_long = r_long.rename(columns={period_dict_values[0]: 'PeriodValue', base_time_values[0]: 'Year'})
+            r_long['PeriodType'] = period_dict_keys[0]
+        else:
+            r_long = r_long.rename(columns={base_time_values[0]: base_time_keys[0]})
+            r_long['PeriodType'] = base_time_keys[0]
+    
         r_long['LastUpdated'] = datetime.now()
         r_long['CustomerId'] = self.customer_id
 
