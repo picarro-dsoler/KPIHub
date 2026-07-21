@@ -64,7 +64,7 @@ class KPISummary:
 
     def push_data(self, PrimaryKey = 'Id'):
         # Fix db path to go from the root directory to database/KPIHub.db
-        db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub.db'
+        db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub_Dev.db'
         KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': db_path, 'PrimaryKey': PrimaryKey})
  
     def processor(self, df):

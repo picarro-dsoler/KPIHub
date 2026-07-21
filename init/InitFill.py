@@ -30,7 +30,7 @@ add_output_excel_location('Westnetz', 398249270000, KPIHub_Conn)
 add_por(
     customer_name = 'Westnetz',
     year = 2026,
-    value = 127000,
+    value = 0,
     StartingDate = '01-01-2026',
     EndingDate = '31-12-2026',
     Description = ''
