@@ -194,6 +194,7 @@ def query_surveys_table(report_table = None, table_name = None):
     query = f"""SELECT {Survey_Columns.get_columns()},
     SQC.LateralRotation as LateralRotation,
     SQC.NumberOfPeaks as NumberOfPeaks,
+    (SELECT COUNT(Id) FROM Segment WHERE SurveyId = S.Id) AS TotalSegmentsInSurvey,
     (SELECT Description FROM SurveyorUnit SU WHERE SU.Id = S.SurveyorUnitId) AS SurveyorUnit,
     RDS.ReportId AS ReportId 
     {into_clause} FROM Survey S 

@@ -267,49 +267,57 @@ class KPISurveySummary(KPISummary):
         self.data['KPI_Utilization'] = Query(query = f"SELECT * FROM KPI_Utilization WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
 
     def processor(self, df):
-        hours = self.data['KPI_Utilization']['WorkingHours'].values[0]
-        days = self.data['KPI_Utilization']['WorkingDays'].values[0]
-        if hasattr(df, 'name') and df.name is not None:
-            group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
-            name_map = dict(zip(self.aggregator, group_keys))
-            group_year = name_map.get('ReportYear')
-            group_week_range = name_map.get('ReportWeek')
-        else:
-            group_year, group_week_range = None, None
-
-        if group_year is not None and group_week_range is not None:
-            day_count = days_in_week_range(group_week_range, group_year, days)
-        else:
-            day_count = None
+        # Empty period_dict => yearly KPI; skip week-dependent utilization metrics
+        is_yearly = not self.period_dict
 
         unique_reports = df.drop_duplicates(subset=['ReportId'])
         no_surveyors = df['SurveyorUnit'].nunique()
         surveyDurationHours = df['SurveyDurationMinutes'].sum()/60
-        targetTimeHours = day_count*hours*no_surveyors
         starndardTargetTimeHours = 6*5*no_surveyors
         surveyCount = df['SurveyId'].nunique()
         avg_speed_weighted = df['AvgSpeedKm'] * df['TotalSegments']
-        #print(df.name, no_surveyors, surveyCount)
-        return pd.Series({
+
+        result = {
             'SurveyDurationHours': surveyDurationHours,
-            'TargetDurationHours': targetTimeHours,
-            'CustomerUtilization': 100*surveyDurationHours/targetTimeHours,
             'StarndardUtilization': 100*surveyDurationHours/starndardTargetTimeHours,
             'TotalSurveyors': no_surveyors,
             'ProductivityPerSurveyor': unique_reports['DistributionPipeCoveredKm'].sum()/no_surveyors,
             'SurveyCount': surveyCount,
             'AvgSpeedKm': avg_speed_weighted.sum()/df['TotalSegments'].sum(),
-            'SurveysCarDay': surveyCount/no_surveyors/day_count,
-
             'IdleTime': 100*df['IdleTimeMinutes'].sum()/df['SurveyDurationMinutes'].sum(),
-            'DaysCount': day_count,
             'TotalDrivenLengthKm': df['TotalKilometers'].sum(),
             'DrivingRatio': df['TotalKilometers'].sum()/unique_reports['AssetCoveredLengthKm'].sum(),
             'NightDrivenLength': df['NightKilometers'].sum(),
             'DayDrivenLength': df['DayKilometers'].sum(),
             'NightRatio': 100*df['NightKilometers'].sum()/df['TotalKilometers'].sum(),
             'DayRatio': 100*df['DayKilometers'].sum()/df['TotalKilometers'].sum(),
-        })
+        }
+
+        if not is_yearly:
+            hours = self.data['KPI_Utilization']['WorkingHours'].values[0]
+            days = self.data['KPI_Utilization']['WorkingDays'].values[0]
+            if hasattr(df, 'name') and df.name is not None:
+                group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
+                name_map = dict(zip(self.aggregator, group_keys))
+                group_year = name_map.get('ReportYear')
+                group_week_range = name_map.get('ReportWeek')
+            else:
+                group_year, group_week_range = None, None
+
+            if group_year is not None and group_week_range is not None:
+                day_count = days_in_week_range(group_week_range, group_year, days)
+            else:
+                day_count = None
+
+            targetTimeHours = day_count*hours*no_surveyors
+            result.update({
+                'TargetDurationHours': targetTimeHours,
+                'CustomerUtilization': 100*surveyDurationHours/targetTimeHours,
+                'SurveysCarDay': surveyCount/no_surveyors/day_count,
+                'DaysCount': day_count,
+            })
+
+        return pd.Series(result)
 
 
 def days_in_week_range(week_number, year, max_days = 7):

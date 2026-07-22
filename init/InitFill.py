@@ -22,13 +22,15 @@ from lib.KPIHubConnection import *
 
 #Add customer
 add_customer('ITALGAS',EU2_Conn)
+add_customer('Westnetz',EU1_Conn)
 
 #Add KP Utilization
 add_customer_utilization('ITALGAS', 6, 5, 2, KPIHub_Conn)
+add_customer_utilization('Westnetz', 6, 5, 2, KPIHub_Conn)
 
 #Add KPI Output Excel Location
 add_output_excel_location('ITALGAS', 401896871043, KPIHub_Conn)
-
+add_output_excel_location('Westnetz', 398249270000, KPIHub_Conn)
 #Add KPI POR
 add_por(
     customer_name = 'ITALGAS',
@@ -38,7 +40,14 @@ add_por(
     EndingDate = '31-12-2026',
     Description = ''
 )
-
+add_por(
+    customer_name = 'Westnetz',
+    year = 2026,
+    value = 0,
+    StartingDate = '01-01-2026',
+    EndingDate = '31-12-2026',
+    Description = ''
+)
 #Add KPI Definition
 output_dict={
     'PeriodValue': ['', 'Number of the week starting from 1st of Jan', ''],

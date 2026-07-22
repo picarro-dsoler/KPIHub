@@ -29,7 +29,10 @@ if __name__ == "__main__":
     customer_list = get_customer_list(KPIHub_Conn)
     arguments = {'conn': KPIHub_Conn}
     for _,customer in customer_list.iterrows():
-        reportIngester = ReportSummaryListIngester(arguments)
+        if customer['Name'] == 'ITALGAS':
+            reportIngester = ReportSummaryListIngester(arguments)
+        else:
+            reportIngester = ReportSummaryIngester(arguments)
         reportIngester.set_customer_info(customer)
         reportIngester.update_check()
         reportIngester.query_data()
