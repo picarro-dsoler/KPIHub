@@ -37,7 +37,7 @@ class SurveySummaryIngester(Ingester):
         #Query the last report
         self.data['reports'] = Query(
             f"""
-            SELECT ReportId, ReportDate, LastUpdated FROM KPI_ReportSummary
+            SELECT ReportId, ReportDate, ReportArea, LastUpdated FROM KPI_ReportSummary
             WHERE CustomerId = '{self.customer_info['CustomerId']}'
             ORDER BY LastUpdated DESC
             """
