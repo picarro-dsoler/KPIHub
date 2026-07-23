@@ -21,7 +21,13 @@ from lib.config import *
 from lib.KPIHubConnection import *
 
 #Add KPI SAT Config
+add_customer('Cadent', EU2_Conn)
+add_por('Cadent', 2026, 127780, 'Km', '01-04-2026', '31-03-2027', 'Total Km of the POR in the year', KPIHub_Conn)
 add_peak_sat_file_id('Cadent', 2206415797785, KPIHub_Conn)
+add_output_excel_location('Cadent', 375691804502, KPIHub_Conn)
+add_customer_utilization('Cadent', 7, 7, 25, KPIHub_Conn)
+if not os.path.exists('../logs'):
+    os.makedirs('../logs')
 
 #Add KPI Definition
 output_dict={
