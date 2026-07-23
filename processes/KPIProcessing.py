@@ -1,16 +1,16 @@
-from locallib.picarrodb import *
-from locallib.slack import *
-from locallib.etl import Loggers
-
 import os
 import sys
 
 
 # Get the absolute path of the current file's directory
 directory = os.path.abspath(os.path.dirname(__file__))
-
 # Just add the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+
+from locallib.picarrodb import *
+from locallib.slack import *
+from locallib.etl import Loggers
+
 
 #Ingester Processes
 from lib.kpi_processor.KPIReport import KPIReport, KPIEmissionSource, KPISurveySummary, KPIPeakSAT, KPIPOR
