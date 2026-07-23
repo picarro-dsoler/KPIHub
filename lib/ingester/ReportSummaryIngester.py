@@ -118,15 +118,18 @@ class ReportSummaryIngester(Ingester):
 
 
 class ReportSummaryListIngester(ReportSummaryIngester):
-    def __init__(self, arguments):
+    def __init__(self, arguments, report_list=None):
         super().__init__(arguments)
+        self.report_list = report_list
     
     def update_check(self):
         self.Logger.info(f"Processing customer: {self.customer_info['Name']}")
         self.check_flag = True
 
-    def query_data(self, report_list = 2360359055921):
+    def query_data(self, report_list=None):
         self.Logger.info(f"Querying data for {self.name}")
+        if report_list is None:
+            report_list = self.report_list
         LSDB_COLS = [
                 'ReportId',
                 'CustomerId',

@@ -237,8 +237,23 @@ class KPIEmissionSource(KPISummary):
         out["PGCount"] = df["PGCount"].sum()
         out["Not_NGCount"] = df["Not_NGCount"].sum()
 
+        out["EmissionRateLPM"] = df["EmissionRateLPM"].sum()
+        out["RepresentativeEmissionRate"] = df["RepresentativeEmissionRate"].sum()
+        out["RepresentativeEmissionRateLPM"] = df["RepresentativeEmissionRateLPM"].sum()
+        out["B0RepEmissionRateLPM"] = df["B0RepEmissionRateLPM"].sum()
+        out["B1RepEmissionRateLPM"] = df["B1RepEmissionRateLPM"].sum()
+        out["Bm1RepEmissionRateLPM"] = df["Bm1RepEmissionRateLPM"].sum()
+        out["Bm2RepEmissionRateLPM"] = df["Bm2RepEmissionRateLPM"].sum()
+        out["B0RepEmissionRate"] = df["B0RepEmissionRate"].sum()
+        out["B1RepEmissionRate"] = df["B1RepEmissionRate"].sum()
+        out["Bm1RepEmissionRate"] = df["Bm1RepEmissionRate"].sum()
+        out["Bm2RepEmissionRate"] = df["Bm2RepEmissionRate"].sum()
+
         out["LisaDensity"] = lisa_count / denom if denom else None
         out["InstatanoeusEmission"] = out["EmissionRate"] / denom if denom else None
+        out["InstatanoeusEmissionLPM"] = out["EmissionRateLPM"] / denom if denom else None
+        out["InstatanoeusRepEmission"] = out["RepresentativeEmissionRate"] / denom if denom else None
+        out["InstatanoeusRepEmissionLPM"] = out["RepresentativeEmissionRateLPM"] / denom if denom else None
         out["B0Density"] = out["B0Count"] / denom if denom else None
         out["B1Density"] = out["B1Count"] / denom if denom else None
         out["Bm1Density"] = out["Bm1Count"] / denom if denom else None

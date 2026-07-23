@@ -22,6 +22,9 @@ from IngesterClass import Ingester
 from datetime import date
 from datetime import timedelta
 
+SCFH_TO_SLPM_FACTOR = 0.471947
+
+
 class EmissionSourceSummaryIngester(Ingester):
     def __init__(self, arguments):
         super().__init__(arguments)
@@ -98,20 +101,22 @@ def summarize_emission(group):
     forShares = group
     return pd.Series({
         "EmissionRate": forCounts["EmissionRate"].sum(),
-        'RepresentativeEmissionRate': forCounts["RepresentativeEmissionRate"].mean(),
+        "EmissionRateLPM": forCounts["EmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
+        'RepresentativeEmissionRate': forCounts["RepresentativeEmissionRate"].sum(),
+        'RepresentativeEmissionRateLPM': forCounts["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
         "LisaCount": forCounts["EmissionSourceId"].count(),
         "B0Count": forCounts["RepresentativeBinLabel"].value_counts().get("B0"),
         "B1Count": forCounts["RepresentativeBinLabel"].value_counts().get("B1"),
         "Bm1Count": forCounts["RepresentativeBinLabel"].value_counts().get("B-1"),
         "Bm2Count": forCounts["RepresentativeBinLabel"].value_counts().get("B-2"),
-        #'B0EmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B0"]["EmissionRate"].sum(),
-        #'B1EmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B1"]["EmissionRate"].sum(),
-        #'Bm1EmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-1"]["EmissionRate"].sum(),
-        #'Bm2EmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-2"]["EmissionRate"].sum(),
-        #'B0RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B0"]["RepresentativeEmissionRate"].mean(),
-        #'B1RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B1"]["RepresentativeEmissionRate"].mean(),
-        #'Bm1RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-1"]["RepresentativeEmissionRate"].mean(),
-        #'Bm2RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-2"]["RepresentativeEmissionRate"].mean(),
+        'B0RepEmissionRateLPM': forCounts[forCounts["RepresentativeBinLabel"] == "B0"]["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
+        'B1RepEmissionRateLPM': forCounts[forCounts["RepresentativeBinLabel"] == "B1"]["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
+        'Bm1RepEmissionRateLPM': forCounts[forCounts["RepresentativeBinLabel"] == "B-1"]["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
+        'Bm2RepEmissionRateLPM': forCounts[forCounts["RepresentativeBinLabel"] == "B-2"]["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
+        'B0RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B0"]["RepresentativeEmissionRate"].sum(),
+        'B1RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B1"]["RepresentativeEmissionRate"].sum(),
+        'Bm1RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-1"]["RepresentativeEmissionRate"].sum(),
+        'Bm2RepEmissionRate': forCounts[forCounts["RepresentativeBinLabel"] == "B-2"]["RepresentativeEmissionRate"].sum(),
         "Not_NGCount": forShares["Disposition"].value_counts().get(2),
         "PGCount": forShares["Disposition"].value_counts().get(3),
         "NGCount": forShares["Disposition"].value_counts().get(1),
@@ -120,7 +125,7 @@ def summarize_emission(group):
 
 if __name__ == "__main__":
     arguments = {'conn': KPIHub_Conn}
-    ingester = EmissionSourceSummaryIngesters(arguments)
+    ingester = EmissionSourceSummaryIngester(arguments)
     ingester.set_customer_info(ingester.customer_list.iloc[0])
     ingester.query_data()
     ingester.push_data()

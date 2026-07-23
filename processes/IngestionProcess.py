@@ -26,11 +26,12 @@ from datetime import timedelta
 import pandas as pd
 
 if __name__ == "__main__":
+    file_list = {'ITALGAS': 2360359055921, 'Toscana Energia': 2362382199609}
     customer_list = get_customer_list(KPIHub_Conn)
     arguments = {'conn': KPIHub_Conn}
     for _,customer in customer_list.iterrows():
-        if customer['Name'] == 'ITALGAS':
-            reportIngester = ReportSummaryListIngester(arguments)
+        if customer['Name'] in file_list:
+            reportIngester = ReportSummaryListIngester(arguments, report_list=file_list[customer['Name']])
         else:
             reportIngester = ReportSummaryIngester(arguments)
         reportIngester.set_customer_info(customer)
