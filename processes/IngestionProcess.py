@@ -1,16 +1,13 @@
-from locallib.picarrodb import *
-from locallib.slack import *
-from locallib.etl import Loggers
-
 import os
 import sys
 
-
-# Get the absolute path of the current file's directory
+# Add the KPIHub directory to sys.path so all local packages resolve
 directory = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(directory, "..")))
 
-# Just add the parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(directory, "..")))
+from locallib.picarrodb import *
+from locallib.slack import *
+from locallib.etl import Loggers
 
 #Ingester Processes
 from lib.ingester.ReportSummaryIngester import ReportSummaryIngester
