@@ -37,7 +37,7 @@ class SurveySummaryIngester(Ingester):
         #Query the last report
         self.data['reports'] = Query(
             f"""
-            SELECT ReportId, ReportDate, LastUpdated FROM KPI_ReportSummary
+            SELECT ReportId, ReportDate, ReportArea, LastUpdated FROM KPI_ReportSummary
             WHERE CustomerId = '{self.customer_info['CustomerId']}'
             ORDER BY LastUpdated DESC
             """
@@ -83,6 +83,8 @@ class SurveySummaryIngester(Ingester):
             self.Logger.info(f"Surveys from LSDB: {len(surveys)}")
             segments = surveys.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'SurveyId', temp_table_name = '#TempSurvey')
             self.Logger.info(f"Segments from LSDB: {len(segments)}")
+
+            
             # Convert StartEpoch to datetime (time only, no date)
             segments['StartTime'] = pd.to_datetime(segments['StartEpoch'], unit='s').dt.time
             segments['StartDate'] = pd.to_datetime(segments['StartEpoch'], unit='s')

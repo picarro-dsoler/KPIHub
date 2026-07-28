@@ -64,7 +64,7 @@ class KPISummary:
 
     def push_data(self, PrimaryKey = 'Id'):
         # Fix db path to go from the root directory to database/KPIHub.db
-        db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub.db'
+        db_path = '/home/sandbox/personal-repos/KPIHub/database/KPIHub_Dev.db'
         KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': db_path, 'PrimaryKey': PrimaryKey})
  
     def processor(self, df):
@@ -77,9 +77,14 @@ class KPISummary:
         period_dict_values = list(self.period_dict.values())
         period_dict_keys = list(self.period_dict.keys())
         base_time_values = list(self.base_time.values())
-        r_long = r_long.rename(columns={period_dict_values[0]: 'PeriodValue', base_time_values[0]: 'Year'})
-   
-        r_long['PeriodType'] = period_dict_keys[0]
+        base_time_keys = list(self.base_time.keys())
+        if len(period_dict_values) > 0:
+            r_long = r_long.rename(columns={period_dict_values[0]: 'PeriodValue', base_time_values[0]: 'Year'})
+            r_long['PeriodType'] = period_dict_keys[0]
+        else:
+            r_long = r_long.rename(columns={base_time_values[0]: base_time_keys[0]})
+            r_long['PeriodType'] = base_time_keys[0]
+    
         r_long['LastUpdated'] = datetime.now()
         r_long['CustomerId'] = self.customer_id
 
@@ -232,8 +237,23 @@ class KPIEmissionSource(KPISummary):
         out["PGCount"] = df["PGCount"].sum()
         out["Not_NGCount"] = df["Not_NGCount"].sum()
 
+        out["EmissionRateLPM"] = df["EmissionRateLPM"].sum()
+        out["RepresentativeEmissionRate"] = df["RepresentativeEmissionRate"].sum()
+        out["RepresentativeEmissionRateLPM"] = df["RepresentativeEmissionRateLPM"].sum()
+        out["B0RepEmissionRateLPM"] = df["B0RepEmissionRateLPM"].sum()
+        out["B1RepEmissionRateLPM"] = df["B1RepEmissionRateLPM"].sum()
+        out["Bm1RepEmissionRateLPM"] = df["Bm1RepEmissionRateLPM"].sum()
+        out["Bm2RepEmissionRateLPM"] = df["Bm2RepEmissionRateLPM"].sum()
+        out["B0RepEmissionRate"] = df["B0RepEmissionRate"].sum()
+        out["B1RepEmissionRate"] = df["B1RepEmissionRate"].sum()
+        out["Bm1RepEmissionRate"] = df["Bm1RepEmissionRate"].sum()
+        out["Bm2RepEmissionRate"] = df["Bm2RepEmissionRate"].sum()
+
         out["LisaDensity"] = lisa_count / denom if denom else None
         out["InstatanoeusEmission"] = out["EmissionRate"] / denom if denom else None
+        out["InstatanoeusEmissionLPM"] = out["EmissionRateLPM"] / denom if denom else None
+        out["InstatanoeusRepEmission"] = out["RepresentativeEmissionRate"] / denom if denom else None
+        out["InstatanoeusRepEmissionLPM"] = out["RepresentativeEmissionRateLPM"] / denom if denom else None
         out["B0Density"] = out["B0Count"] / denom if denom else None
         out["B1Density"] = out["B1Count"] / denom if denom else None
         out["Bm1Density"] = out["Bm1Count"] / denom if denom else None
@@ -262,49 +282,57 @@ class KPISurveySummary(KPISummary):
         self.data['KPI_Utilization'] = Query(query = f"SELECT * FROM KPI_Utilization WHERE CustomerId = '{self.customer_id}'").execute(KPIHub_Conn)
 
     def processor(self, df):
-        hours = self.data['KPI_Utilization']['WorkingHours'].values[0]
-        days = self.data['KPI_Utilization']['WorkingDays'].values[0]
-        if hasattr(df, 'name') and df.name is not None:
-            group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
-            name_map = dict(zip(self.aggregator, group_keys))
-            group_year = name_map.get('ReportYear')
-            group_week_range = name_map.get('ReportWeek')
-        else:
-            group_year, group_week_range = None, None
-
-        if group_year is not None and group_week_range is not None:
-            day_count = days_in_week_range(group_week_range, group_year, days)
-        else:
-            day_count = None
+        # Empty period_dict => yearly KPI; skip week-dependent utilization metrics
+        is_yearly = not self.period_dict
 
         unique_reports = df.drop_duplicates(subset=['ReportId'])
         no_surveyors = df['SurveyorUnit'].nunique()
         surveyDurationHours = df['SurveyDurationMinutes'].sum()/60
-        targetTimeHours = day_count*hours*no_surveyors
         starndardTargetTimeHours = 6*5*no_surveyors
         surveyCount = df['SurveyId'].nunique()
         avg_speed_weighted = df['AvgSpeedKm'] * df['TotalSegments']
-        #print(df.name, no_surveyors, surveyCount)
-        return pd.Series({
+
+        result = {
             'SurveyDurationHours': surveyDurationHours,
-            'TargetDurationHours': targetTimeHours,
-            'CustomerUtilization': 100*surveyDurationHours/targetTimeHours,
             'StarndardUtilization': 100*surveyDurationHours/starndardTargetTimeHours,
             'TotalSurveyors': no_surveyors,
             'ProductivityPerSurveyor': unique_reports['DistributionPipeCoveredKm'].sum()/no_surveyors,
             'SurveyCount': surveyCount,
             'AvgSpeedKm': avg_speed_weighted.sum()/df['TotalSegments'].sum(),
-            'SurveysCarDay': surveyCount/no_surveyors/day_count,
-
             'IdleTime': 100*df['IdleTimeMinutes'].sum()/df['SurveyDurationMinutes'].sum(),
-            'DaysCount': day_count,
             'TotalDrivenLengthKm': df['TotalKilometers'].sum(),
             'DrivingRatio': df['TotalKilometers'].sum()/unique_reports['AssetCoveredLengthKm'].sum(),
             'NightDrivenLength': df['NightKilometers'].sum(),
             'DayDrivenLength': df['DayKilometers'].sum(),
             'NightRatio': 100*df['NightKilometers'].sum()/df['TotalKilometers'].sum(),
             'DayRatio': 100*df['DayKilometers'].sum()/df['TotalKilometers'].sum(),
-        })
+        }
+
+        if not is_yearly:
+            hours = self.data['KPI_Utilization']['WorkingHours'].values[0]
+            days = self.data['KPI_Utilization']['WorkingDays'].values[0]
+            if hasattr(df, 'name') and df.name is not None:
+                group_keys = (df.name,) if not isinstance(df.name, tuple) else df.name
+                name_map = dict(zip(self.aggregator, group_keys))
+                group_year = name_map.get('ReportYear')
+                group_week_range = name_map.get('ReportWeek')
+            else:
+                group_year, group_week_range = None, None
+
+            if group_year is not None and group_week_range is not None:
+                day_count = days_in_week_range(group_week_range, group_year, days)
+            else:
+                day_count = None
+
+            targetTimeHours = day_count*hours*no_surveyors
+            result.update({
+                'TargetDurationHours': targetTimeHours,
+                'CustomerUtilization': 100*surveyDurationHours/targetTimeHours,
+                'SurveysCarDay': surveyCount/no_surveyors/day_count,
+                'DaysCount': day_count,
+            })
+
+        return pd.Series(result)
 
 
 def days_in_week_range(week_number, year, max_days = 7):

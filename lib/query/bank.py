@@ -9,6 +9,61 @@ def setup_query(query_func):
 
 
 @setup_query
+def get_reports_by_id(report_id_table = None, table_name = None):
+    if report_id_table is not None:
+        report_id_filter = f"R.Id IN (SELECT ReportId FROM {report_id_table})"
+    else:
+        raise ValueError("report_id_table is required")
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+    query = f"""
+    SELECT 
+        C.Name AS CustomerName,
+        C.Id AS CustomerId,
+        CASE
+            WHEN ReportType.Description = 'Compliance' THEN CONCAT('CR-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
+            WHEN ReportType.Description = 'Emissions' THEN CONCAT('ER-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
+            ELSE CONCAT('CR-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
+        END AS ReportName,
+        R.Id AS ReportId,
+        R.ReportTitle AS ReportTitle,
+        L.Title AS Label,
+        R.DateStarted AS ReportDate,
+        RA.ExternalId AS BoundaryName,
+        RA.BoundaryType AS BoundaryType,
+        RA.Shape.STAsText() AS ReportArea,
+        RAC.AssetLengthKM AS ReportAssetLengthKm,
+        RC.PercentCoverageAssets AS ReportPercentCoverageAssets,
+        RAC.AssetLengthKM * RC.PercentCoverageAssets AS AssetCoveredLengthKm,
+        RAC.DistributionPipeKm,
+        RAC.DistributionPipeCoveredKm,
+        RAC.DistributionPipePercentCovered,
+        RAC.ServicePipeKm,
+        RAC.ServicePipeCoveredKm
+    {into_clause}
+    FROM
+        Report R
+    LEFT JOIN Customer C ON
+        R.CustomerId = C.Id
+    LEFT JOIN ReportLabel RL ON
+        R.Id = RL.ReportId
+    LEFT JOIN Label L ON
+        RL.LabelId = L.Id
+    LEFT JOIN ReportType ON
+        R.ReportTypeId = ReportType.Id
+    LEFT JOIN ReportArea RA ON R.Id = RA.ReportId
+    LEFT JOIN ReportCompliance RC ON R.Id = RC.ReportId
+    LEFT JOIN ReportAreaCovered RAC ON R.Id = RAC.ReportId
+    WHERE
+        {report_id_filter}
+        AND L.Title = 'Final Checkbox'
+        AND RL.IsActive = 1
+    """
+    return query
+
+@setup_query
 def get_reports(customer_name, table_name = None, starting_date=None, final_checkbox = True):
     date_filter = ""
     if starting_date:
@@ -39,6 +94,7 @@ def get_reports(customer_name, table_name = None, starting_date=None, final_chec
         R.DateStarted AS ReportDate,
         RA.ExternalId AS BoundaryName,
         RA.BoundaryType AS BoundaryType,
+        RA.Shape.STAsText() AS ReportArea,
         RAC.AssetLengthKM AS ReportAssetLengthKm,
         RC.PercentCoverageAssets AS ReportPercentCoverageAssets,
         RAC.AssetLengthKM * RC.PercentCoverageAssets AS AssetCoveredLengthKm,
@@ -67,6 +123,28 @@ def get_reports(customer_name, table_name = None, starting_date=None, final_chec
         AND RL.IsActive = 1
         {date_filter}
     """
+    return query
+
+
+def query_reports_view_by_name(report_table,table_name = None):
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+    query =  f"""select 
+    rp_id AS "ReportId",
+    rp_label_other AS "ReportLabelOther",
+    bo_name AS "BoundaryName",
+    bo_mode AS "BoundaryMode",
+    bo_type AS "BoundaryType",
+    bo_plant AS "BoundaryPlant",
+    bo_subplant AS "BoundarySubplant",
+    bo_region AS "BoundaryRegion",
+    bo_subregion AS "BoundarySubRegion",
+    bo_km_network AS "BoundaryKmNetwork"
+    {into_clause}
+    from dash.v_report 
+    where rp_name IN (SELECT ReportName FROM {report_table})"""
     return query
 
 @setup_query
@@ -116,6 +194,7 @@ def query_surveys_table(report_table = None, table_name = None):
     query = f"""SELECT {Survey_Columns.get_columns()},
     SQC.LateralRotation as LateralRotation,
     SQC.NumberOfPeaks as NumberOfPeaks,
+    (SELECT COUNT(Id) FROM Segment WHERE SurveyId = S.Id) AS TotalSegmentsInSurvey,
     (SELECT Description FROM SurveyorUnit SU WHERE SU.Id = S.SurveyorUnitId) AS SurveyorUnit,
     RDS.ReportId AS ReportId 
     {into_clause} FROM Survey S 

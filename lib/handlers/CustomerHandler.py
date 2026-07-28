@@ -22,7 +22,7 @@ def get_customer_list(Conn):
     q = Query(query = query)
     return q.execute(Conn)
 
-def add_customer_utilization(customer_name, working_hours = 0, working_days = 0, base_surveyor_count = 0, Conn = KPIHub_Conn):
+def add_customer_utilization(customer_name, working_hours = 6, working_days = 5, base_surveyor_count = 0, sunrise_hour = 7, sunset_hour = 7, Conn = KPIHub_Conn):
     customer_id = Query(query = f"SELECT CustomerId FROM KPI_Customer WHERE Name = '{customer_name}'").execute(Conn)
     if customer_id.empty:
         raise ValueError(f"Customer {customer_name} not found")

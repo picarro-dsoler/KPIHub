@@ -20,15 +20,43 @@ from lib.handlers.CustomerHandler import *
 from lib.config import *
 from lib.KPIHubConnection import *
 
-#Add KPI SAT Config
-add_customer('Cadent', EU2_Conn)
-add_por('Cadent', 2026, 127780, 'Km', '01-04-2026', '31-03-2027', 'Total Km of the POR in the year', KPIHub_Conn)
-add_peak_sat_file_id('Cadent', 2206415797785, KPIHub_Conn)
-add_output_excel_location('Cadent', 375691804502, KPIHub_Conn)
-add_customer_utilization('Cadent', 7, 7, 25, KPIHub_Conn)
-if not os.path.exists('../logs'):
-    os.makedirs('../logs')
-
+#Add customer
+add_customer('ITALGAS',EU2_Conn)
+add_customer('Westnetz',EU1_Conn)
+add_customer('Toscana Energia',EU2_Conn)
+#Add KP Utilization
+add_customer_utilization('ITALGAS', working_days = 6, working_hours = 5, sunrise_hour = 7, sunset_hour = 19, Conn =KPIHub_Conn)
+add_customer_utilization('Westnetz', working_days = 6, working_hours = 5, sunrise_hour = 8, sunset_hour = 19, Conn = KPIHub_Conn)
+add_customer_utilization('Toscana Energia', working_days = 6, working_hours = 5, sunrise_hour = 8, sunset_hour = 19, Conn = KPIHub_Conn)
+#Add KPI Output Excel Location
+add_output_excel_location('ITALGAS', 401896871043, KPIHub_Conn)
+add_output_excel_location('Westnetz', 398249270000, KPIHub_Conn)
+add_output_excel_location('Toscana Energia', 401896871043, KPIHub_Conn)
+#Add KPI POR
+add_por(
+    customer_name = 'ITALGAS',
+    year = 2026,
+    value = 0,
+    StartingDate = '01-01-2026',
+    EndingDate = '31-12-2026',
+    Description = ''
+)
+add_por(
+    customer_name = 'Westnetz',
+    year = 2026,
+    value = 0,
+    StartingDate = '01-01-2026',
+    EndingDate = '31-12-2026',
+    Description = ''
+)
+add_por(
+    customer_name = 'Toscana Energia',
+    year = 2026,
+    value = 0,
+    StartingDate = '01-01-2026',
+    EndingDate = '31-12-2026',
+    Description = ''
+)
 #Add KPI Definition
 output_dict={
     'PeriodValue': ['', 'Number of the week starting from 1st of Jan', ''],
@@ -61,6 +89,17 @@ output_dict={
     'PeakAboveSATCount': ['Peak', 'Total number of peaks above SAT in the specified week', ''],
     'LisaCount': ['Lisa', 'Total number of Lisa in the specified week, (No Disposition 2)', ''],
     'EmissionRate': ['SCFH', 'Total emission rate in the specified week, (No Disposition 2)', ''],
+    'EmissionRateLPM': ['LPM', 'Total emission rate in the specified week, (No Disposition 2)', 'EmissionRate * 0.471947'],
+    'RepresentativeEmissionRate': ['SCFH', 'Total representative emission rate in the specified week, (No Disposition 2)', ''],
+    'RepresentativeEmissionRateLPM': ['LPM', 'Total representative emission rate in the specified week, (No Disposition 2)', 'RepresentativeEmissionRate * 0.471947'],
+    'B0RepEmissionRate': ['SCFH', 'Total B0 representative emission rate in the specified week, (No Disposition 2)', ''],
+    'B1RepEmissionRate': ['SCFH', 'Total B1 representative emission rate in the specified week, (No Disposition 2)', ''],
+    'Bm1RepEmissionRate': ['SCFH', 'Total B-1 representative emission rate in the specified week, (No Disposition 2)', ''],
+    'Bm2RepEmissionRate': ['SCFH', 'Total B-2 representative emission rate in the specified week, (No Disposition 2)', ''],
+    'B0RepEmissionRateLPM': ['LPM', 'Total B0 representative emission rate in the specified week, (No Disposition 2)', 'B0RepEmissionRate * 0.471947'],
+    'B1RepEmissionRateLPM': ['LPM', 'Total B1 representative emission rate in the specified week, (No Disposition 2)', 'B1RepEmissionRate * 0.471947'],
+    'Bm1RepEmissionRateLPM': ['LPM', 'Total B-1 representative emission rate in the specified week, (No Disposition 2)', 'Bm1RepEmissionRate * 0.471947'],
+    'Bm2RepEmissionRateLPM': ['LPM', 'Total B-2 representative emission rate in the specified week, (No Disposition 2)', 'Bm2RepEmissionRate * 0.471947'],
     'B0Count': ['Lisa', 'Total number of B0 in the specified week, (No Disposition 2)', ''],
     'B1Count': ['Lisa', 'Total number of B1 in the specified week, (No Disposition 2)', ''],
     'Bm1Count': ['Lisa', 'Total number of B-1 in the specified week, (No Disposition 2)', ''],
@@ -70,6 +109,9 @@ output_dict={
     'Not_NGCount': ['Lisa', 'Total number of Not NG in the specified week, (With Disposition 2)', ''],
     'LisaDensity': ['Lisa / Km', 'Number of Lisa per Km of Asset Covered', 'LisaCount / DistributionPipeCoveredKm'],
     'InstatanoeusEmission': ['SCFH / Km', 'Emission rate per Km of Asset Covered', 'EmissionRate / DistributionPipeCoveredKm'],
+    'InstatanoeusEmissionLPM': ['LPM / Km', 'Emission rate per Km of Asset Covered', 'InstatanoeusEmission * 0.471947 / DistributionPipeCoveredKm'],
+    'InstatanoeusRepEmission': ['SCFH / Km', 'Representative emission rate per Km of Asset Covered', 'RepresentativeEmissionRate / DistributionPipeCoveredKm'],
+    'InstatanoeusRepEmissionLPM': ['LPM / Km', 'Representative emission rate per Km of Asset Covered', 'InstatanoeusRepEmission * 0.471947 / DistributionPipeCoveredKm'],
     'B0Density': ['Lisa / Km', 'Number of B0 per Km of Asset Covered', 'B0Count / DistributionPipeCoveredKm'],
     'B1Density': ['Lisa / Km', 'Number of B1 per Km of Asset Covered', 'B1Count / DistributionPipeCoveredKm'],
     'Bm1Density': ['Lisa / Km', 'Number of B-1 per Km of Asset Covered', 'Bm1Count / DistributionPipeCoveredKm'],
