@@ -12,6 +12,7 @@ os.chdir(_root)
 PROCESSES = [
     "Setup.py",
     "InitFill.py",
+    "InitKPI.py",
     "WeeklyView_Creator.py",
 ]
 
