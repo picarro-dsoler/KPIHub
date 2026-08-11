@@ -22,6 +22,9 @@ from lib.KPIHubConnection import *
 from lib.query.bank import *
 
 
+META_COLS = {"Year", "PeriodValue", "CustomerName", "BoundaryRegion", "WeekDates"}
+
+
 #Get total KPI
 def week_dates(year, week):
     """
@@ -36,16 +39,67 @@ def week_dates(year, week):
     # Python 3.8+ provides fromisocalendar
     week_start = date.fromisocalendar(year, week, 1)
     week_end = week_start + timedelta(days=6)
-    # Make sure week_start is not before 2026-01-01
-    min_start = date(2026, 1, 1)
+    # Make sure week_start is not before the start of the requested year
+    min_start = date(year, 1, 1)
     if week_start < min_start:
         week_start = min_start
         week_end = week_start + timedelta(days=6)
     return week_start, week_end
 
+
+def max_iso_week(year):
+    """Last ISO week number that belongs to ``year`` (52 or 53)."""
+    return date(year, 12, 28).isocalendar()[1]
+
+
+def expected_weeks(year, as_of=None):
+    """Weeks to include for ``year``: 1..current week, or full year if past."""
+    as_of = as_of or date.today()
+    last_week = max_iso_week(year)
+    if as_of.year < year:
+        return []
+    if as_of.year > year:
+        return list(range(1, last_week + 1))
+    return list(range(1, min(as_of.isocalendar()[1], last_week) + 1))
+
+
+def ensure_all_weeks(export_df, year, customer_name, region, weeks=None, value_columns=None):
+    """Reindex to every expected week and fill missing KPI values with 0."""
+    weeks = weeks if weeks is not None else expected_weeks(year)
+    template = pd.DataFrame({"PeriodValue": weeks})
+
+    if export_df is None or export_df.empty:
+        filled = template.copy()
+    else:
+        export_df = export_df.copy()
+        export_df["PeriodValue"] = export_df["PeriodValue"].astype(int)
+        filled = template.merge(export_df, on="PeriodValue", how="left")
+
+    filled["Year"] = year
+    filled["CustomerName"] = customer_name
+    filled["BoundaryRegion"] = region
+
+    if value_columns:
+        for col in value_columns:
+            if col not in META_COLS and col not in filled.columns:
+                filled[col] = 0
+
+    value_cols = [c for c in filled.columns if c not in META_COLS]
+    for col in value_cols:
+        filled[col] = pd.to_numeric(filled[col], errors="coerce").fillna(0)
+
+    # Keep week order and a stable column order: meta first, then values
+    meta_order = [c for c in ["Year", "PeriodValue", "CustomerName", "BoundaryRegion"] if c in filled.columns]
+    other = [c for c in filled.columns if c not in meta_order]
+    filled = filled[meta_order + other].sort_values("PeriodValue").reset_index(drop=True)
+    return filled
+
+
 if __name__ == "__main__":
     year = 2026
+    weeks = expected_weeks(year)
     customer_list = get_customer_list(KPIHub_Conn)
+    customer_list = customer_list[customer_list['Name'] == 'PSG']
     for _, customer in customer_list.iterrows():
         print("--------------------------------")
         print(customer['Name'])
@@ -74,25 +128,44 @@ if __name__ == "__main__":
         regions = Query(f"SELECT DISTINCT BoundaryRegion FROM Weekly_KPI WHERE CustomerName = '{customer_name}'").execute(KPIHub_Conn)
         kpi_data = Query(f"SELECT * FROM Weekly_KPI WHERE CustomerName = '{customer_name}' AND Year = {year}").execute(KPIHub_Conn)
 
+        # KPI value columns from the view (exclude meta)
+        view_cols = cols['name'].tolist() if 'name' in cols.columns else list(kpi_data.columns)
+        value_columns = [c for c in view_cols if c not in META_COLS]
+
+        # Always include at least the Global (null region) sheet when the view has no rows
+        if regions.empty:
+            regions = pd.DataFrame({"BoundaryRegion": [None]})
+
         with pd.ExcelWriter(file_name) as writer:
             for _, region_row in regions.iterrows():
                 region = region_row['BoundaryRegion']
                 # Select the export_df according to region (handle null safely)
                 if pd.isnull(region):
-                    export_df = kpi_data[kpi_data['BoundaryRegion'].isnull()].copy()
+                    export_df = kpi_data[kpi_data['BoundaryRegion'].isnull()].copy() if not kpi_data.empty else pd.DataFrame()
                     sheet_name = f"KPI Global {year} Weekly"
                 else:
-                    export_df = kpi_data[kpi_data['BoundaryRegion'] == region].copy()
+                    export_df = kpi_data[kpi_data['BoundaryRegion'] == region].copy() if not kpi_data.empty else pd.DataFrame()
                     sheet_region = str(region)[:10]  # limit to 20 characters
                     sheet_name = f"KPI {sheet_region} {year} Weekly"
-               
+
+                # Ensure every expected week appears; missing weeks filled with zeros
+                export_df = ensure_all_weeks(
+                    export_df,
+                    year=year,
+                    customer_name=customer_name,
+                    region=region,
+                    weeks=weeks,
+                    value_columns=value_columns,
+                )
 
                 # Fill PeakAboveSATCount with 0, but only if column exists
                 if 'PeakAboveSATCount' in export_df.columns:
                     export_df['PeakAboveSATCount'] = export_df['PeakAboveSATCount'].fillna(0)
 
                 # Process the WeekDates
-                export_df['WeekDates'] = export_df['PeriodValue'].apply(lambda week: f"{week_dates(2026, int(week))[0]} to {week_dates(2026, int(week))[1]}")
+                export_df['WeekDates'] = export_df['PeriodValue'].apply(
+                    lambda week: f"{week_dates(year, int(week))[0]} to {week_dates(year, int(week))[1]}"
+                )
                 # Move "WeekDates" to the first column in export_df
                 cols = list(export_df.columns)
                 if "WeekDates" in cols:
