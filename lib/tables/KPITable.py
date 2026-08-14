@@ -32,6 +32,7 @@ def _connect(db_path):
 class KPITable(DBTable):
     def __init__(self, name, columns = None):
         super().__init__(name, columns)
+        self.sql_list = {}
 
     @staticmethod
     def sqlite_column_type(datatype):
@@ -51,7 +52,7 @@ class KPITable(DBTable):
         conn.close()
 
 
-    def create_table(self, arguments = None):
+    def create_table(self, arguments = None, commit = True):
         if arguments is None:
             raise ValueError("Arguments are required")
         if 'db_path' not in arguments:
@@ -73,13 +74,13 @@ class KPITable(DBTable):
         if 'pair_key' in arguments and arguments['pair_key'] is not None:
             col_defs += f" , PRIMARY KEY ({', '.join(arguments['pair_key'])})"
         sql = f"CREATE TABLE IF NOT EXISTS {self.name} ({col_defs})"
-
-        print(sql)
-        cursor.execute(sql)
-        if 'extra_sql' in arguments and arguments['extra_sql'] is not None:
-            cursor.execute(arguments['extra_sql'])
-        conn.commit()
-        conn.close()
+        if commit:
+            cursor.execute(sql)
+            if 'extra_sql' in arguments and arguments['extra_sql'] is not None:
+                cursor.execute(arguments['extra_sql'])
+            conn.commit()
+            conn.close()
+        return sql
 
     def reinit_table(self, arguments = None, extra_sql = None):
         if arguments is None:
@@ -100,6 +101,11 @@ class KPITable(DBTable):
         conn.close()
         return df
 
+    def sql(self, query = 'create', db_type= 'postgres'):
+        if db_type == 'postgres':
+            return self.sql_list[query]
+        else:
+            return self.sql_list[query]
     def update_table(self, arguments = None):
         #Load the content of the df into a temp table
         #Bulk update

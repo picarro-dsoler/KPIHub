@@ -9,7 +9,9 @@ KPI_Customer = KPITable('KPI_Customer')
 KPI_Customer.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
 KPI_Customer.add_column(DBColumn('Name', datatype='nvarchar'))
 KPI_Customer.add_column(DBColumn('ShortName', datatype='nvarchar'))
+KPI_Customer.add_column(DBColumn('Active', datatype='bit'))
 KPI_Customer.add_column(DBColumn('DBLocation', datatype='nvarchar'))
+KPI_Customer.add_column(DBColumn('Country', datatype='nvarchar'))
 KPI_Customer.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 # POR Table

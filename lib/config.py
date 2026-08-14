@@ -1,13 +1,14 @@
 import sqlite3
 from locallib.picarrodb import *
 from datetime import date
-DB_PATH = 'database/KPIHub_Dev.db'
+#DB_PATH = 'database/KPIHub_Dev.db'
+DB_PATH = 'database/KPIHub_EuropeAvg.db'
 INGESTER_LOG_PATH = 'logs/'
 
 #Refreshing configuration
-UPDATE_WINDOW_DAYS = 90
+UPDATE_WINDOW_DAYS = 1
 UPDATE_FREQUENCY_HOURS = 3
-STARTING_YEAR = 2023
+STARTING_YEAR = 2025
 STARTING_DATE = date(STARTING_YEAR, 1, 1)
 #Connection Configuration
 CONN_DICT = {'EU1':EU1_Conn, 'EU2': EU2_Conn}

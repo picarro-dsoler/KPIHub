@@ -58,7 +58,8 @@ class SurveySummaryIngesterDuplicates(Ingester):
             if (self.data['survey_count'].iloc[0]['SurveyCount']) > 0:
                 self.check_flag = True
                 self.starting_date = self.update_window
-                self.Logger.info(f"Getting emissions from {self.update_window} to {self.current_date}")
+                self.Logger.info(f"Getting surveys from {self.update_window} to {self.current_date}")
+                print(self.data['survey_count'].iloc[0]['SurveyCount'])
 
             else:
                 self.Logger.info(f"No emissions found, processing from start")
@@ -79,7 +80,7 @@ class SurveySummaryIngesterDuplicates(Ingester):
             reports_to_query = self.data['reports'][
                 pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
             ]
-   
+            self.Logger.info(f"Reports to query: {len(reports_to_query)}")
             reports_to_query.db.set_query(query_surveys_table(report_table="#TempReports"))
             surveys = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
             surveys.db.set_query(query_segments_table(survey_table="#TempSurvey"))
@@ -165,7 +166,7 @@ class SurveySummaryIngester(Ingester):
                 self.check_flag = True
                 self.starting_date = self.update_window
                 self.Logger.info(f"Getting emissions from {self.update_window} to {self.current_date}")
-
+                print(self.data['survey_count'].iloc[0]['SurveyCount'])
             else:
                 self.Logger.info(f"No emissions found, processing from start")
                 self.starting_date = STARTING_DATE
@@ -182,11 +183,13 @@ class SurveySummaryIngester(Ingester):
 
             # Handle potential issues with type mismatch when comparing datetimes
             # Coerce both sides to date for a robust comparison
-            #reports_to_query = self.data['reports'][
-            #    pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
-            #]
-            reports_to_query = self.data['reports'].copy()
-   
+            reports_to_query = self.data['reports'][
+                pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
+            ]
+            if(len(reports_to_query) == 0):
+                self.Logger.info(f"No reports found, skipping")
+                return
+
             reports_to_query.db.set_query(query_surveys_table(report_table="#TempReports"))
             surveys = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
             surveys.db.set_query(query_segments_table(survey_table="#TempSurvey"))
@@ -299,37 +302,6 @@ class SurveySummaryIngester(Ingester):
         super().push_data(primary_key = ['SurveyId','ReportId'])
         self.Logger.info(f"Data pushed to {db_path}")
 
-# Define a function to determine if survey is in 'day' or 'night'
-def get_day_night(start_time, sunrise, sunset):
-    # start_time should be a datetime.time object
-    hour = start_time.hour
-    if sunrise <= hour < sunset:
-        return 'Day'
-    else:
-        return 'Night'
-
-def set_actie_idle(speed, speed_threshold):
-    if speed < speed_threshold:
-        return 'Idle'
-    else:
-        return 'Active' 
-def survey_summary_apply(row):
-    return pd.Series({
-        'SurveyId': row['SurveyId'],
-        'SurveyorUnit': row['SurveyorUnit'],
-        'SurveyRawDurationMinutes': row['DurationMinutes'],
-        'ReportId': row['ReportId'],
-        'StartHour': row['StartHour'],
-        'StartTime': row['StartTime'],
-        'StartEpoch': row['StartEpoch'],
-        'EndTime': row['EndTime'],
-        'EndEpoch': row['EndEpoch'],
-        'StartDay': row['StartDay'],
-        'EndDay': row['EndDay'],
-        'LateralRotation': row['LateralRotation'],
-        'NumberOfPeaks': row['NumberOfPeaks'],
-        'TotalSegmentsInSurvey': row['TotalSegmentsInSurvey']
-    })
 
 # Define a function to determine if survey is in 'day' or 'night'
 def get_day_night(start_time, sunrise, sunset):
@@ -367,7 +339,7 @@ def survey_summary_apply(row):
     return pd.Series({
         'SurveyId': row['SurveyId'],
         'SurveyorUnit': row['SurveyorUnit'],
-        'SurveyDurationMinutes': row['DurationMinutes'],
+        'SurveyRawDurationMinutes': row['DurationMinutes'],
         'ReportId': row['ReportId'],
         'StartHour': row['StartHour'],
         'StartTime': row['StartTime'],
@@ -377,5 +349,6 @@ def survey_summary_apply(row):
         'StartDay': row['StartDay'],
         'EndDay': row['EndDay'],
         'LateralRotation': row['LateralRotation'],
-        'NumberOfPeaks': row['NumberOfPeaks']
+        'NumberOfPeaks': row['NumberOfPeaks'],
+        'TotalSegmentsInSurvey': row['TotalSegmentsInSurvey']
     })

@@ -78,6 +78,10 @@ class EmissionSourceSummaryIngester(Ingester):
             reports_to_query = self.data['reports'][
                 pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
             ]
+            if reports_to_query.empty:
+                self.Logger.info("No reports in update window, skipping")
+                self.check_flag = False
+                return
             reports_to_query.db.set_query(query_emission_sources_table(report_table = '#TempReports'))
             emission_sources = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
 

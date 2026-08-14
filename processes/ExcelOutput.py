@@ -99,7 +99,7 @@ if __name__ == "__main__":
     year = 2026
     weeks = expected_weeks(year)
     customer_list = get_customer_list(KPIHub_Conn)
-    customer_list = customer_list[customer_list['Name'] == 'PSG']
+    customer_list = customer_list[customer_list['Active'] == 1]
     for _, customer in customer_list.iterrows():
         print("--------------------------------")
         print(customer['Name'])

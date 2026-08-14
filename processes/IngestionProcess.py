@@ -23,10 +23,13 @@ from datetime import timedelta
 import pandas as pd
 
 if __name__ == "__main__":
-    file_list = {'ITALGAS': 2360359055921, 'Toscana Energia': 2362382199609}
+    #file_list = {'ITALGAS': 2360359055921, 'Toscana Energia': 2362382199609}
+    file_list = {}
     customer_list = get_customer_list(KPIHub_Conn)
     arguments = {'conn': KPIHub_Conn}
     for _,customer in customer_list.iterrows():
+        if customer['Active'] == 0:
+            continue
         if customer['Name'] in file_list:
             reportIngester = ReportSummaryListIngester(arguments, report_list=file_list[customer['Name']])
         else:
@@ -51,10 +54,10 @@ if __name__ == "__main__":
         emissionSourceIngester.push_data()
         emissionSourceIngester.sanity_check()
 
-        if customer['Name'] == 'Cadent':
-            peakSATIngester = PeakSATIngester(arguments)
-            peakSATIngester.set_customer_info(customer)
-            peakSATIngester.update_check()
-            peakSATIngester.query_data()
-            peakSATIngester.push_data()
-            peakSATIngester.sanity_check()
+        #if customer['Name'] == 'Cadent':
+        #    peakSATIngester = PeakSATIngester(arguments)
+        #    peakSATIngester.set_customer_info(customer)
+        #    peakSATIngester.update_check()
+        #    peakSATIngester.query_data()
+        #    peakSATIngester.push_data()
+        #    peakSATIngester.sanity_check()

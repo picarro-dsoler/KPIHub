@@ -1,0 +1,9 @@
+docker run -d \
+  --name kpihub-postgis \
+  -e POSTGRES_USER=dsoler \
+  -e POSTGRES_PASSWORD=dsoler \
+  -e POSTGRES_DB=Datanalytics \
+  -p 5432:5432 \
+  -v datanalytics_pgdata:/var/lib/postgresql/data \
+  --restart unless-stopped \
+  kpihub-postgis
