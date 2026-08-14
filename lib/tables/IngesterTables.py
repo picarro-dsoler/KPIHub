@@ -14,6 +14,12 @@ KPI_Customer.add_column(DBColumn('DBLocation', datatype='nvarchar'))
 KPI_Customer.add_column(DBColumn('Country', datatype='nvarchar'))
 KPI_Customer.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
+#Country Table
+KPI_Country = KPITable('KPI_Country')
+KPI_Country.add_column(DBColumn('CountryId', datatype='uniqueidentifier', key='primary'))
+KPI_Country.add_column(DBColumn('Name', datatype='nvarchar'))
+KPI_Country.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
 # POR Table
 KPI_POR = KPITable('KPI_POR')
 KPI_POR.add_column(DBColumn('CustomerId', datatype='nvarchar'))

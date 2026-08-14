@@ -1,5 +1,6 @@
 from locallib.picarrodb import *
 from locallib.slack import *
+from locallib.pandas import *
 from locallib.etl import Loggers
 
 import os
@@ -23,28 +24,45 @@ from datetime import date
 from datetime import timedelta
 from functools import reduce
 class KPISummary:
-    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+    def __init__(self, process_dict, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         self.name = 'KPISummary'
         self.base_time = {'Year': 'ReportYear'}
         self.period_dict = period_dict
         self.data = {}
+        self.process_flag = True
         self.tableList = []
+        self.kpi_list = []
         self.aggregator_dict = {**self.base_time, **aggregator, **period_dict}
         self.aggregator = list(self.aggregator_dict.values())
-        self.customer_name = customer_name
+        if 'Customer' in process_dict:
+            self.customer_name = process_dict['Customer']
+            self.customer_id = None
+            self.key = 'Name'
+        elif 'Customer' not in process_dict and 'Country' in process_dict:
+            self.customer_name = process_dict['Country']
+            query = f"SELECT CountryId FROM KPI_Country WHERE Name = '{self.customer_name}'"
+            self.country_id = Query(query = query).execute([KPIHub_Conn])['CountryId'].values[0]
+            self.key = 'Country'
+        else:
+            raise ValueError(f"Either Customer or Country must be provided in process_dict")
 
-        self.customer_id = None
-        result = Query(query = f"SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}'").execute([KPIHub_Conn])
+        result = Query(query = f"SELECT CustomerId FROM KPI_Customer WHERE {self.key} = '{self.customer_name}'").execute([KPIHub_Conn])
         if not result.empty:
-            self.customer_id = result.iloc[0]['CustomerId']
+            self.customer_id = result[['CustomerId']]
         else:
             raise ValueError(f"Customer name '{self.customer_name}' not found in KPI_Customer table.")
    
     
     def query_table(self):
+        customer_id = self.customer_id.copy()
+        query_reports = f"SELECT CustomerId, ReportId FROM KPI_ReportSummary WHERE CustomerId IN (SELECT CustomerId FROM temp_customer)"
+        customer_id.db.set_query(query_reports)
+        reports = customer_id.db.execute(KPIHub_Conn, source_col = 'CustomerId', temp_table_name = 'temp_customer')
         for table in self.tableList:
-            self.data[table] = Query(query = f"SELECT * FROM {table.name} WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId IN (SELECT CustomerId FROM KPI_Customer WHERE Name = '{self.customer_name}'))").execute([KPIHub_Conn])
-
+            query = f"SELECT * FROM {table.name} WHERE ReportId IN (SELECT ReportId FROM temp_reports)"
+            reports.db.set_query(query)
+            self.data[table] = reports.db.execute(KPIHub_Conn, source_col = 'ReportId', temp_table_name = 'temp_reports')
+            
     def process_data(self, on='ReportId'):
         # Aggregate and operate
         if not self.tableList:
@@ -56,17 +74,22 @@ class KPISummary:
             for table in self.tableList[1:]:
                 temp_data = pd.merge(temp_data, self.data[table], on=on, how='inner')
         if self.tableList:
-            self.data['output'] = temp_data.groupby(self.aggregator).apply(self.processor)
-            self.data['output'] = self.data['output'].round(2)
- 
-        self.melter()
+            if len(self.data[self.tableList[0]]) == 0:
+                self.process_flag = False
+            else:
+                self.process_flag = True
+                self.data['output'] = temp_data.groupby(self.aggregator).apply(self.processor)
+                self.data['output'] = self.data['output'].round(2)
+                self.melter()
 
 
     def push_data(self, PrimaryKey = 'Id'):
-        # Push data using DB_PATH from config.py to ensure portability
-        KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': DB_PATH, 'PrimaryKey': PrimaryKey})
- 
- 
+        # Fix db path to go from the root directory to database/KPIHub.db
+        if self.process_flag:
+            KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': DB_PATH, 'PrimaryKey': PrimaryKey})
+        else:
+            print(f"No data to push for {self.customer_name}")
+            return
     def processor(self, df):
         return df
 
@@ -86,7 +109,10 @@ class KPISummary:
             r_long['PeriodType'] = base_time_keys[0]
     
         r_long['LastUpdated'] = datetime.now()
-        r_long['CustomerId'] = self.customer_id
+        if self.key == 'Name':
+            r_long['CustomerId'] = self.customer_id.iloc[0][0]
+        elif self.key == 'Country':
+            r_long['CustomerId'] = self.country_id
 
         self.data['output'] = r_long
 
@@ -98,7 +124,6 @@ class KPISummary:
                 output = f"{output}_{key[0]}{row[value].replace(' ', '')}"
             else:
                 output = f"{output}_{key[0]}{row[value]}"
-           
 
         return output
 
@@ -200,8 +225,9 @@ class KPIPeakSAT(KPISummary):
         })
 
 class KPIReport(KPISummary):
-    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
-        super().__init__(customer_name, aggregator, period_dict)
+    kpi_list = ['FOVMain', 'ReportAssetLengthKm', 'AssetCoveredLengthKm', 'DistributionPipeKm', 'DistributionPipeCoveredKm', 'ServicePipeKm', 'ServicePipeCoveredKm', 'ReportCount']
+    def __init__(self, process_dict, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(process_dict, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary]
         self.name = 'KPIReport'
     def processor(self, df):
@@ -218,12 +244,14 @@ class KPIReport(KPISummary):
         return pd.Series(out)
 
 class KPIEmissionSource(KPISummary):
-    def __init__(self, customer_name, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
-        super().__init__(customer_name, aggregator, period_dict)
+    kpi_list = ['LisaCount', 'EmissionRate', 'B0Count', 'B1Count', 'Bm1Count', 'Bm2Count', 'NGCount', 'PGCount', 'Not_NGCount', 'EmissionRateLPM', 'RepresentativeEmissionRate', 'RepresentativeEmissionRateLPM', 'B0RepEmissionRateLPM', 'B1RepEmissionRateLPM', 'Bm1RepEmissionRateLPM', 'Bm2RepEmissionRateLPM', 'B0RepEmissionRate', 'B1RepEmissionRate', 'Bm1RepEmissionRate', 'Bm2RepEmissionRate', 'LisaDensity', 'InstantaneousEmission', 'InstantaneousEmissionLPM', 'InstantaneousRepEmission', 'InstantaneousRepEmissionLPM', 'InstantaneousRepEmissionB1', 'InstantaneousRepEmissionB1LPM', 'InstantaneousRepEmissionB0', 'InstantaneousRepEmissionB0LPM', 'InstantaneousRepEmissionBm1', 'InstantaneousRepEmissionBm1LPM', 'InstantaneousRepEmissionBm2', 'InstantaneousRepEmissionBm2LPM', 'B0Density', 'B1Density', 'Bm1Density', 'Bm2Density', 'NGDensity', 'PGDensity', 'B0Share', 'B1Share', 'Bm1Share', 'Bm2Share', 'NGShare', 'PGShare', 'Not_NGShare']
+    
+    def __init__(self, process_dict, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
+        super().__init__(process_dict, aggregator, period_dict)
         self.tableList = [KPI_ReportSummary,KPI_EmissionSourceSummary]
         self.name = 'KPIEmissionSource'
     def processor(self, df):
-        denominator = 'DistributionPipeCoveredKm'
+        denominator = 'AssetCoveredLengthKm'
         out = {}
         denom = df[denominator].sum()
         lisa_count = df["LisaCount"].sum()
@@ -250,10 +278,22 @@ class KPIEmissionSource(KPISummary):
         out["Bm2RepEmissionRate"] = df["Bm2RepEmissionRate"].sum()
 
         out["LisaDensity"] = lisa_count / denom if denom else None
-        out["InstatanoeusEmission"] = out["EmissionRate"] / denom if denom else None
-        out["InstatanoeusEmissionLPM"] = out["EmissionRateLPM"] / denom if denom else None
-        out["InstatanoeusRepEmission"] = out["RepresentativeEmissionRate"] / denom if denom else None
-        out["InstatanoeusRepEmissionLPM"] = out["RepresentativeEmissionRateLPM"] / denom if denom else None
+        out["InstantaneousEmission"] = out["EmissionRate"] / denom if denom else None
+        out["InstantaneousEmissionLPM"] = out["EmissionRateLPM"] / denom if denom else None
+        out["InstantaneousRepEmission"] = out["RepresentativeEmissionRate"] / denom if denom else None
+        out["InstantaneousRepEmissionLPM"] = out["RepresentativeEmissionRateLPM"] / denom if denom else None
+
+        out['InstantaneousRepEmissionB1'] = out["B1RepEmissionRate"] / denom if denom else None
+        out['InstantaneousRepEmissionB1LPM'] = out["B1RepEmissionRateLPM"] / denom if denom else None
+        out['InstantaneousRepEmissionB0'] = out["B0RepEmissionRate"] / denom if denom else None
+        out['InstantaneousRepEmissionB0LPM'] = out["B0RepEmissionRateLPM"] / denom if denom else None
+        out['InstantaneousRepEmissionBm1'] = out["Bm1RepEmissionRate"] / denom if denom else None
+        out['InstantaneousRepEmissionBm1LPM'] = out["Bm1RepEmissionRateLPM"] / denom if denom else None
+        out['InstantaneousRepEmissionBm2'] = out["Bm2RepEmissionRate"] / denom if denom else None
+        out['InstantaneousRepEmissionBm2LPM'] = out["Bm2RepEmissionRateLPM"] / denom if denom else None
+
+        out["B1RepEmissionRate"] = out["B1RepEmissionRate"] / denom if denom else None
+        out["B1RepEmissionRateLPM"] = out["B1RepEmissionRateLPM"] / denom if denom else None
         out["B0Density"] = out["B0Count"] / denom if denom else None
         out["B1Density"] = out["B1Count"] / denom if denom else None
         out["Bm1Density"] = out["Bm1Count"] / denom if denom else None
