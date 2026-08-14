@@ -1,5 +1,9 @@
+# Shared network so other containers can reach Postgres by name (kpihub-postgis).
+docker network create kpihub-net 2>/dev/null || true
+
 docker run -d \
   --name kpihub-postgis \
+  --network kpihub-net \
   -e POSTGRES_USER=dsoler \
   -e POSTGRES_PASSWORD=dsoler \
   -e POSTGRES_DB=Datanalytics \
@@ -7,3 +11,13 @@ docker run -d \
   -v datanalytics_pgdata:/var/lib/postgresql/data \
   --restart unless-stopped \
   kpihub-postgis
+
+# Start your app/dev container on the same network, then connect with:
+#   PGHOST=kpihub-postgis PGPORT=5432 PGUSER=dsoler PGPASSWORD=dsoler PGDATABASE=Datanalytics
+#
+# Example:
+#   docker run --network kpihub-net -it your-dev-image bash
+#
+# From inside that container (Python):
+#   from lib.PostGISConnection import get_postgis_conn
+#   conn = get_postgis_conn()  # reads PGHOST etc.; defaults to localhost if unset
