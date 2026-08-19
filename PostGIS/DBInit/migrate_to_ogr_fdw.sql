@@ -1,18 +1,37 @@
--- Run on first database initialization (docker-entrypoint-initdb.d)
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS postgis_topology;
-CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
-CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
-CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+-- Migrate an existing KPIHub PostGIS database from tds_fdw to ogr_fdw.
+-- Rebuild the Docker image first, then run:
+--   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 -f migrate_to_ogr_fdw.sql
+--
+-- Verify after migration:
+--   SELECT foreign_table_schema, foreign_table_name
+--     FROM information_schema.foreign_tables
+--     WHERE foreign_table_schema IN ('eu1', 'eu2')
+--     ORDER BY 1, 2;
+--   SELECT COUNT(*) FROM eu1."Report";
+
 CREATE EXTENSION IF NOT EXISTS ogr_fdw;
 
-CREATE SCHEMA IF NOT EXISTS kpihub AUTHORIZATION dsoler;
-CREATE SCHEMA IF NOT EXISTS eu1 AUTHORIZATION dsoler;
-CREATE SCHEMA IF NOT EXISTS eu2 AUTHORIZATION dsoler;
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT foreign_table_schema, foreign_table_name
+    FROM information_schema.foreign_tables
+    WHERE foreign_table_schema IN ('eu1', 'eu2')
+  LOOP
+    EXECUTE format(
+      'DROP FOREIGN TABLE IF EXISTS %I.%I CASCADE',
+      r.foreign_table_schema,
+      r.foreign_table_name
+    );
+  END LOOP;
+END $$;
 
--- EU1: SQL Server via ogr_fdw (MSSQLSpatial handles geometry/geography columns)
--- Credentials are embedded in the datasource connection string (ogr_fdw has no user mapping).
-CREATE SERVER IF NOT EXISTS eu1_srv
+DROP SERVER IF EXISTS eu1_srv CASCADE;
+DROP SERVER IF EXISTS eu2_srv CASCADE;
+
+CREATE SERVER eu1_srv
   FOREIGN DATA WRAPPER ogr_fdw
   OPTIONS (
     datasource 'MSSQL:server=eu-prd-sqlsrv-ee-db01.czz1yneu9gmr.eu-central-1.rds.amazonaws.com,1433;database=EU-SurveyorProduction;uid=dsoler;pwd=2twN2cY0uIwm;driver=FreeTDS',
@@ -20,8 +39,7 @@ CREATE SERVER IF NOT EXISTS eu1_srv
     config_options 'MSSQLSPATIAL_LIST_ALL_TABLES=YES MSSQLSPATIAL_USE_GEOMETRY_COLUMNS=NO'
   );
 
--- EU2: SQL Server via ogr_fdw
-CREATE SERVER IF NOT EXISTS eu2_srv
+CREATE SERVER eu2_srv
   FOREIGN DATA WRAPPER ogr_fdw
   OPTIONS (
     datasource 'MSSQL:server=eu-prd2-sqlsrv-ee-db01.czz1yneu9gmr.eu-central-1.rds.amazonaws.com,1433;database=EU-SurveyorProduction2;uid=dsoler;pwd=2twN2cY0uIwm;driver=FreeTDS',
@@ -29,8 +47,6 @@ CREATE SERVER IF NOT EXISTS eu2_srv
     config_options 'MSSQLSPATIAL_LIST_ALL_TABLES=YES MSSQLSPATIAL_USE_GEOMETRY_COLUMNS=NO'
   );
 
--- ogr_fdw layer names are dbo.TableName; import via ogr_all then strip the dbo. prefix
--- so existing KPIHub SQL can keep using eu1."Report", etc.
 IMPORT FOREIGN SCHEMA ogr_all
   LIMIT TO (
     "dbo.Customer",
@@ -115,24 +131,13 @@ BEGIN
   END LOOP;
 END $$;
 
--- DataHub: locallib.picarrodb DATAHUB_Conn (DATAHUBUSER / DATAHUBPW / DATAHUBDATABASE from .env)
-CREATE SCHEMA IF NOT EXISTS dash AUTHORIZATION dsoler;
+SELECT foreign_table_schema, foreign_table_name
+FROM information_schema.foreign_tables
+WHERE foreign_table_schema IN ('eu1', 'eu2')
+ORDER BY 1, 2;
 
-CREATE SERVER IF NOT EXISTS datahub_srv
-  FOREIGN DATA WRAPPER postgres_fdw
-  OPTIONS (
-    host 'eu-sensebird-migrated-rds-pg1-r4-prd.czz1yneu9gmr.eu-central-1.rds.amazonaws.com',
-    port '5432',
-    dbname 'datahub',
-    sslmode 'require'
-  );
-
-CREATE USER MAPPING IF NOT EXISTS FOR dsoler
-  SERVER datahub_srv
-  OPTIONS (user 'dmauro', password 'Hub&?Dat64');
-
--- KPIHub DataHub source (from lib/query/bank.py)
-IMPORT FOREIGN SCHEMA dash
-  LIMIT TO (v_report)
-  FROM SERVER datahub_srv
-  INTO dash;
+SELECT 'eu1.Report' AS target, COUNT(*) AS rows FROM eu1."Report";
+SELECT column_name, udt_name
+FROM information_schema.columns
+WHERE table_schema = 'eu1' AND table_name = 'ReportArea'
+ORDER BY ordinal_position;

@@ -13,9 +13,6 @@ CREATE TABLE IF NOT EXISTS "kpihub"."KPI_POR" (CustomerId TEXT, "Year" INTEGER, 
 -- KPI_OutputExcelLocation
 CREATE TABLE IF NOT EXISTS "kpihub"."KPI_OutputExcelLocation" (CustomerId UUID, BoxFolderId TEXT, LastUpdated TIMESTAMP, PRIMARY KEY (CustomerId));
 
--- KPI_ReportDrivingSurvey
-CREATE TABLE IF NOT EXISTS "kpihub"."KPI_ReportDrivingSurvey" (Id UUID, ReportId UUID, SurveyId UUID, LastUpdated TIMESTAMP, PRIMARY KEY (Id));
-
 -- KPI_Utilization
 CREATE TABLE IF NOT EXISTS "kpihub"."KPI_Utilization" (CustomerId UUID, WorkingDays INTEGER, WorkingHours INTEGER, SunriseHour INTEGER, SunsetHour INTEGER, BaseSurveyorCount INTEGER, Description TEXT, LastUpdated TIMESTAMP, PRIMARY KEY (CustomerId));
 

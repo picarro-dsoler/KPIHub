@@ -63,8 +63,10 @@ class KPISummary:
 
 
     def push_data(self, PrimaryKey = 'Id'):
-        # Push data using DB_PATH from config.py to ensure portability
-        KPI_Data.update_table(arguments = {'DataFrame': self.data['output'], 'db_path': DB_PATH, 'PrimaryKey': PrimaryKey})
+        # Use the same resolved path as KPIHub_Conn (from config.DB_PATH)
+        KPI_Data.update_table(
+            arguments={'DataFrame': self.data['output'], 'db_path': KPIHub_Conn.host, 'PrimaryKey': PrimaryKey}
+        )
  
  
     def processor(self, df):

@@ -2,7 +2,7 @@ import sqlite3
 from locallib.picarrodb import *
 from datetime import date
 #DB_PATH = 'database/KPIHub_Dev.db'
-DB_PATH = 'database/KPIHub_EuropeAvg.db'
+DB_PATH = 'database/KPIHub_Dev.db'
 INGESTER_LOG_PATH = 'logs/'
 
 #Refreshing configuration

@@ -1,4 +1,4 @@
--- Refresh survey summary for one customer (loops one report at a time).
+-- Refresh survey summary for one customer (single batched pass over all reports).
 --
 -- Option A: Python ingester (recommended; uses SurveySummaryIngester logic + LSDB):
 --   cd /home/dsoler/david-repos/KPIHub

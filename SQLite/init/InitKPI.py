@@ -48,6 +48,7 @@ output_dict={
     'DayRatio': ['Percent', 'DayKm / TotalKilometers', ''],
     'PeakAboveSATCount': ['Peak', 'Total number of peaks above SAT in the specified week', ''],
     'LisaCount': ['Lisa', 'Total number of Lisa in the specified week, (No Disposition 2)', ''],
+    'LisaPSCount': ['Lisa', 'Total number of Lisa in the specified week, (No Disposition 2 and IsFiltered 1)', ''],
     'EmissionRate': ['SCFH', 'Total emission rate in the specified week, (No Disposition 2)', ''],
     'EmissionRateLPM': ['LPM', 'Total emission rate in the specified week, (No Disposition 2)', 'EmissionRate * 0.471947'],
     'RepresentativeEmissionRate': ['SCFH', 'Total representative emission rate in the specified week, (No Disposition 2)', ''],
@@ -72,7 +73,6 @@ output_dict={
     'InstantanoeusEmissionLPM': ['LPM / Km', 'Emission rate per Km of Asset Covered', 'InstatanoeusEmission * 0.471947 / DistributionPipeCoveredKm'],
     'InstantaneousRepEmission': ['SCFH / Km', 'Representative emission rate per Km of Asset Covered', 'RepresentativeEmissionRate / DistributionPipeCoveredKm'],
     'InstantaneousRepEmissionLPM': ['LPM / Km', 'Representative emission rate per Km of Asset Covered', 'InstantaneousRepEmission * 0.471947 / DistributionPipeCoveredKm'],
-    
     'InstantaneousRepEmissionB1': ['SCFH / Km', 'B1 representative emission rate per Km of Asset Covered', 'B1RepEmissionRate / DistributionPipeCoveredKm'],
     'InstantaneousRepEmissionB1LPM': ['LPM / Km', 'B1 representative emission rate per Km of Asset Covered', 'InstantaneousRepEmissionB1 * 0.471947 / DistributionPipeCoveredKm'],
     'InstantaneousRepEmissionB0': ['SCFH / Km', 'B0 representative emission rate per Km of Asset Covered', 'B0RepEmissionRate / DistributionPipeCoveredKm'],

@@ -2,10 +2,10 @@
 --
 -- From shell:
 --   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
---     -f /home/dsoler/david-repos/KPIHub/PostGIS/init/InitKPIHub.sql
+--     -f /home/dsoler/david-repos/KPIHub/PostGIS/init/ingesters/InitKPIHub.sql
 --
 -- From psql:
---   \i /home/dsoler/david-repos/KPIHub/PostGIS/init/InitKPIHub.sql
+--   \i /home/dsoler/david-repos/KPIHub/PostGIS/init/ingesters/InitKPIHub.sql
 --
 -- Uses \ir so included files resolve relative to this script's directory.
 
@@ -15,20 +15,14 @@
 \echo '==> SeedCustomerInfo.sql'
 \ir SeedCustomerInfo.sql
 
-\echo '==> ReportSummaryMaterializedView.sql'
-\ir ReportSummaryMaterializedView.sql
-
-\echo '==> refresh_report_summary()'
-CALL kpihub.refresh_report_summary();
+\echo '==> ReportSummary.sql'
+\ir mv/ReportSummary.sql
 
 \echo '==> EmissionSourceSummaryMaterializedView.sql'
-\ir EmissionSourceSummaryMaterializedView.sql
-
-\echo '==> refresh_emission_source_summary()'
-CALL kpihub.refresh_emission_source_summary();
+\ir mv/EmissionSourceSummaryMaterializedView.sql
 
 \echo '==> SurveySummaryMaterializedView.sql'
-\ir SurveySummaryMaterializedView.sql
+\ir mv/SurveySummaryMaterializedView.sql
 
 -- Survey refresh pulls Segment.Shape over tds_fdw per report and can OOM Postgres in Docker.
 -- Run manually when needed (optionally after: CALL kpihub.refresh_report_areas();):

@@ -244,7 +244,7 @@ class KPIReport(KPISummary):
         return pd.Series(out)
 
 class KPIEmissionSource(KPISummary):
-    kpi_list = ['LisaCount', 'EmissionRate', 'B0Count', 'B1Count', 'Bm1Count', 'Bm2Count', 'NGCount', 'PGCount', 'Not_NGCount', 'EmissionRateLPM', 'RepresentativeEmissionRate', 'RepresentativeEmissionRateLPM', 'B0RepEmissionRateLPM', 'B1RepEmissionRateLPM', 'Bm1RepEmissionRateLPM', 'Bm2RepEmissionRateLPM', 'B0RepEmissionRate', 'B1RepEmissionRate', 'Bm1RepEmissionRate', 'Bm2RepEmissionRate', 'LisaDensity', 'InstantaneousEmission', 'InstantaneousEmissionLPM', 'InstantaneousRepEmission', 'InstantaneousRepEmissionLPM', 'InstantaneousRepEmissionB1', 'InstantaneousRepEmissionB1LPM', 'InstantaneousRepEmissionB0', 'InstantaneousRepEmissionB0LPM', 'InstantaneousRepEmissionBm1', 'InstantaneousRepEmissionBm1LPM', 'InstantaneousRepEmissionBm2', 'InstantaneousRepEmissionBm2LPM', 'B0Density', 'B1Density', 'Bm1Density', 'Bm2Density', 'NGDensity', 'PGDensity', 'B0Share', 'B1Share', 'Bm1Share', 'Bm2Share', 'NGShare', 'PGShare', 'Not_NGShare']
+    kpi_list = ['LisaCount', 'LisaPSCount', 'EmissionRate', 'B0Count', 'B1Count', 'Bm1Count', 'Bm2Count', 'NGCount', 'PGCount', 'Not_NGCount', 'EmissionRateLPM', 'RepresentativeEmissionRate', 'RepresentativeEmissionRateLPM', 'B0RepEmissionRateLPM', 'B1RepEmissionRateLPM', 'Bm1RepEmissionRateLPM', 'Bm2RepEmissionRateLPM', 'B0RepEmissionRate', 'B1RepEmissionRate', 'Bm1RepEmissionRate', 'Bm2RepEmissionRate', 'LisaDensity', 'InstantaneousEmission', 'InstantaneousEmissionLPM', 'InstantaneousRepEmission', 'InstantaneousRepEmissionLPM', 'InstantaneousRepEmissionB1', 'InstantaneousRepEmissionB1LPM', 'InstantaneousRepEmissionB0', 'InstantaneousRepEmissionB0LPM', 'InstantaneousRepEmissionBm1', 'InstantaneousRepEmissionBm1LPM', 'InstantaneousRepEmissionBm2', 'InstantaneousRepEmissionBm2LPM', 'B0Density', 'B1Density', 'Bm1Density', 'Bm2Density', 'NGDensity', 'PGDensity', 'B0Share', 'B1Share', 'Bm1Share', 'Bm2Share', 'NGShare', 'PGShare', 'Not_NGShare']
     
     def __init__(self, process_dict, aggregator = {}, period_dict = {'Week': 'ReportWeek'}):
         super().__init__(process_dict, aggregator, period_dict)
@@ -256,6 +256,7 @@ class KPIEmissionSource(KPISummary):
         denom = df[denominator].sum()
         lisa_count = df["LisaCount"].sum()
         out["LisaCount"] = lisa_count
+        out["LisaPSCount"] = df["LisaPSCount"].sum()
         out["EmissionRate"] = df["EmissionRate"].sum()
         out["B0Count"] = df["B0Count"].sum()
         out["B1Count"] = df["B1Count"].sum()

@@ -1,6 +1,23 @@
 # Shared network so other containers can reach Postgres by name (kpihub-postgis).
 docker network create kpihub-net 2>/dev/null || true
 
+# Rebuild image after changing DBInit/Dockerfile or init.sql:
+#
+#   cd /path/to/personal-repos/KPIHub/PostGIS/DBInit
+#   docker build -t kpihub-postgis .
+#
+# Or from repo root:
+#   docker build -t kpihub-postgis KPIHub/PostGIS/DBInit
+#
+# Requires Docker running on the HOST (not inside the dev container).
+# If you get "Cannot connect to the Docker daemon", start Docker Desktop
+# or run: sudo systemctl start docker
+#
+# New database: init.sql runs automatically on first container start.
+# Existing database: rebuild image, then run migrate_to_ogr_fdw.sql:
+#   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
+#     -f KPIHub/PostGIS/DBInit/migrate_to_ogr_fdw.sql
+
 docker run -d \
   --name kpihub-postgis \
   --network kpihub-net \

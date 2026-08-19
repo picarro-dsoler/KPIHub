@@ -1,0 +1,23 @@
+-- Optional helpers for report summary snapshots.
+-- Main setup and refresh live in mv/ReportSummary.sql.
+--
+-- Usage:
+--   psql -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 -f ReportSummaryFunctions.sql
+--
+-- Refresh one customer (incremental):
+--   CALL kpihub.refresh_report_summary_customer(
+--     'c6565aaf-5251-1dbe-8d39-3a1f45b580a9'::uuid,
+--     'EU1'
+--   );
+--
+-- Full backfill for one customer:
+--   CALL kpihub.refresh_report_summary_customer(
+--     'c6565aaf-5251-1dbe-8d39-3a1f45b580a9'::uuid,
+--     'EU1',
+--     DATE '2023-01-01'
+--   );
+--
+-- Refresh all active customers:
+--   CALL kpihub.refresh_report_summary();
+
+\echo 'Report summary refresh procedures are defined in mv/ReportSummary.sql'

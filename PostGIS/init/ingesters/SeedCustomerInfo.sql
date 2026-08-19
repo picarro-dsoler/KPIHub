@@ -12,7 +12,7 @@ SET enable_mergejoin = off;
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -38,7 +38,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398246560432', NOW()
+SELECT C."Id"::uuid, '398246560432', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Avacon')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -50,7 +50,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -73,7 +73,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -99,7 +99,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398249270000', NOW()
+SELECT C."Id"::uuid, '398249270000', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Westnetz')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -111,7 +111,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -134,7 +134,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -160,7 +160,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398248268726', NOW()
+SELECT C."Id"::uuid, '398248268726', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Syna')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -172,7 +172,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -195,7 +195,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -221,7 +221,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398247366692', NOW()
+SELECT C."Id"::uuid, '398247366692', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('NBB')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -233,7 +233,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -256,7 +256,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -282,7 +282,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398251266011', NOW()
+SELECT C."Id"::uuid, '398251266011', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('EWE')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -294,7 +294,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -317,7 +317,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -343,7 +343,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398247368526', NOW()
+SELECT C."Id"::uuid, '398247368526', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('ENBW')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -355,7 +355,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -378,7 +378,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -404,7 +404,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398250189267', NOW()
+SELECT C."Id"::uuid, '398250189267', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Thuega Energienetze')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -416,7 +416,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -439,7 +439,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -465,7 +465,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398250462372', NOW()
+SELECT C."Id"::uuid, '398250462372', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Energieversorgung Filstal')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -477,7 +477,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -500,7 +500,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -526,7 +526,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398249781410', NOW()
+SELECT C."Id"::uuid, '398249781410', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('E-NETZ SUDHESSEN')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -538,7 +538,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -561,7 +561,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -587,7 +587,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398256904676', NOW()
+SELECT C."Id"::uuid, '398256904676', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Netz Niederösterreich')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -599,7 +599,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -622,7 +622,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -648,7 +648,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '398260816518', NOW()
+SELECT C."Id"::uuid, '398260816518', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Stedin')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -660,7 +660,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   6,
   6,
@@ -683,7 +683,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -709,7 +709,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '385063165916', NOW()
+SELECT C."Id"::uuid, '385063165916', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Gas Networks Ireland')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -721,7 +721,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   6,
   8,
   6,
@@ -744,7 +744,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -770,7 +770,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '390960004101', NOW()
+SELECT C."Id"::uuid, '390960004101', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('Wales and West Utilities')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -782,7 +782,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   6,
   8,
   6,
@@ -805,7 +805,7 @@ ON CONFLICT (customerid) DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU2'::text AS dblocation,
     false::boolean AS active
@@ -831,7 +831,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '375691804502', NOW()
+SELECT C."Id"::uuid, '375691804502', NOW()
 FROM eu2."Customer" C
 WHERE lower(C."Name") = lower('Cadent')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -843,7 +843,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   7,
   7,
   6,
@@ -888,7 +888,7 @@ ON CONFLICT (customerid, "Year") DO UPDATE SET
 
 WITH src AS (
   SELECT
-    C."Id" AS customerid,
+    C."Id"::uuid AS customerid,
     C."Name" AS customer_name,
     'EU1'::text AS dblocation,
     true::boolean AS active
@@ -914,7 +914,7 @@ ON CONFLICT (customerid) DO UPDATE SET
   lastupdated = EXCLUDED.lastupdated;
 
 INSERT INTO kpihub."KPI_OutputExcelLocation" (customerid, boxfolderid, lastupdated)
-SELECT C."Id", '402825591696', NOW()
+SELECT C."Id"::uuid, '402825591696', NOW()
 FROM eu1."Customer" C
 WHERE lower(C."Name") = lower('PSG')
 ON CONFLICT (customerid) DO UPDATE SET
@@ -926,7 +926,7 @@ INSERT INTO kpihub."KPI_Utilization" (
   basesurveyorcount, description, lastupdated
 )
 SELECT
-  C."Id",
+  C."Id"::uuid,
   5,
   8,
   6,

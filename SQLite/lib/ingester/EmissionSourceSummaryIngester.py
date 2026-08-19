@@ -84,11 +84,13 @@ class EmissionSourceSummaryIngester(Ingester):
                 return
             reports_to_query.db.set_query(query_emission_sources_table(report_table = '#TempReports'))
             emission_sources = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
-
             emissions_summary = emission_sources.groupby("ReportId").apply(summarize_emission).reset_index()
-            emissions_summary.fillna(0, inplace=True)
-            emissions_summary['LastUpdated'] = datetime.now()
-            self.data['output'] = emissions_summary
+            # Merge with reports_to_query to fill zeros for missing emission records per report
+            merged_reports = reports_to_query[['ReportId']].merge(emissions_summary, on="ReportId", how="left")
+            merged_reports.fillna(0, inplace=True)
+     
+            merged_reports['LastUpdated'] = datetime.now()
+            self.data['output'] = merged_reports
         else:
             self.Logger.info(f"No reports found, skipping")
 
@@ -102,6 +104,7 @@ class EmissionSourceSummaryIngester(Ingester):
 def summarize_emission(group):
     # Remove all the rows in the group where Disposition == 2
     forCounts = group[group["Disposition"] != 2]
+    forPCChecks = group[group["IsFiltered"] == 0 & (group["Disposition"] != 2)]
     forShares = group
     return pd.Series({
         "EmissionRate": forCounts["EmissionRate"].sum(),
@@ -109,6 +112,7 @@ def summarize_emission(group):
         'RepresentativeEmissionRate': forCounts["RepresentativeEmissionRate"].sum(),
         'RepresentativeEmissionRateLPM': forCounts["RepresentativeEmissionRate"].sum() * SCFH_TO_SLPM_FACTOR,
         "LisaCount": forCounts["EmissionSourceId"].count(),
+        "LisaPSCount": forPCChecks["EmissionSourceId"].count(),
         "B0Count": forCounts["RepresentativeBinLabel"].value_counts().get("B0"),
         "B1Count": forCounts["RepresentativeBinLabel"].value_counts().get("B1"),
         "Bm1Count": forCounts["RepresentativeBinLabel"].value_counts().get("B-1"),

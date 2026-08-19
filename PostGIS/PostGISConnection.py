@@ -37,3 +37,5 @@ class PostGISConnection(PConnection):
 
 def get_postgis_conn() -> PostGISConnection:
     return PostGISConnection()
+
+KPIHubPG_Conn = get_postgis_conn()

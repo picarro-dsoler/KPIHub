@@ -37,13 +37,6 @@ KPI_OutputExcelLocation.add_column(DBColumn('CustomerId', datatype='uniqueidenti
 KPI_OutputExcelLocation.add_column(DBColumn('BoxFolderId', datatype='nvarchar'))
 KPI_OutputExcelLocation.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
-# ReportDrivingSurvey
-KPI_ReportDrivingSurvey = KPITable('KPI_ReportDrivingSurvey')
-KPI_ReportDrivingSurvey.add_column(DBColumn('Id', datatype='uniqueidentifier', key='primary'))
-KPI_ReportDrivingSurvey.add_column(DBColumn('ReportId', datatype='uniqueidentifier'))
-KPI_ReportDrivingSurvey.add_column(DBColumn('SurveyId', datatype='uniqueidentifier'))
-KPI_ReportDrivingSurvey.add_column(DBColumn('LastUpdated', datatype='datetime'))
-
 # Utilization Table
 KPI_Utilization = KPITable("KPI_Utilization")
 KPI_Utilization.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='primary'))
@@ -118,6 +111,7 @@ KPI_EmissionSourceSummary.add_column(DBColumn('EmissionRateLPM', datatype='uniqu
 KPI_EmissionSourceSummary.add_column(DBColumn('RepresentativeEmissionRate', datatype='float'))
 KPI_EmissionSourceSummary.add_column(DBColumn('RepresentativeEmissionRateLPM', datatype='float'))
 KPI_EmissionSourceSummary.add_column(DBColumn('LisaCount', datatype='int'))
+KPI_EmissionSourceSummary.add_column(DBColumn('LisaPSCount', datatype='int'))
 KPI_EmissionSourceSummary.add_column(DBColumn('B0Count', datatype='int'))
 KPI_EmissionSourceSummary.add_column(DBColumn('B1Count', datatype='int'))
 KPI_EmissionSourceSummary.add_column(DBColumn('Bm1Count', datatype='int'))

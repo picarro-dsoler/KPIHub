@@ -40,12 +40,12 @@ if __name__ == "__main__":
         reportIngester.push_data()
         reportIngester.sanity_check()
 
-        #surveyIngester = SurveySummaryIngester(arguments)
-        #surveyIngester.set_customer_info(customer)
-        #surveyIngester.update_check()
-        #surveyIngester.query_data()
-        #surveyIngester.push_data()
-        #surveyIngester.sanity_check()
+        surveyIngester = SurveySummaryIngester(arguments)
+        surveyIngester.set_customer_info(customer)
+        surveyIngester.update_check()
+        surveyIngester.query_data()
+        surveyIngester.push_data()
+        surveyIngester.sanity_check()
         
         emissionSourceIngester = EmissionSourceSummaryIngester(arguments)
         emissionSourceIngester.set_customer_info(customer)
