@@ -1,0 +1,1 @@
+SELECT * FROM kpihub.refresh_mv_kpireportsummary_eu2();

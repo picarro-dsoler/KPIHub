@@ -17,6 +17,10 @@ docker network create kpihub-net 2>/dev/null || true
 # Existing database: rebuild image, then run migrate_to_ogr_fdw.sql:
 #   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
 #     -f KPIHub/PostGIS/DBInit/migrate_to_ogr_fdw.sql
+#
+# EU2 hybrid FDW (tds tabular + ogr ReportArea) on existing DB:
+#   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
+#     -f KPIHub/PostGIS/DBInit/migrate_eu2_hybrid_fdw.sql
 
 docker run -d \
   --name kpihub-postgis \

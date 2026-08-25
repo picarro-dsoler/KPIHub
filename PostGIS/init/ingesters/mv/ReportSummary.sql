@@ -23,22 +23,16 @@ SET enable_mergejoin = off;
 SET work_mem = '256MB';
 SET maintenance_work_mem = '512MB';
 
+DROP VIEW IF EXISTS kpihub."V_KPIReportSummary";
 DROP VIEW IF EXISTS kpihub."V_ReportSummary";
-DROP MATERIALIZED VIEW IF EXISTS kpihub."MV_ReportSummary_eu1";
-DROP MATERIALIZED VIEW IF EXISTS kpihub."MV_ReportSummary_eu2";
-DROP VIEW IF EXISTS kpihub."MV_ReportSummary_eu1";
-DROP VIEW IF EXISTS kpihub."MV_ReportSummary_eu2";
-DROP MATERIALIZED VIEW IF EXISTS kpihub."MV_ReportSummary";
-DROP TABLE IF EXISTS kpihub."ReportAreaCache_eu1";
-DROP TABLE IF EXISTS kpihub."ReportAreaCache_eu2";
-DROP TABLE IF EXISTS kpihub."MV_ReportSummary_eu1";
-DROP TABLE IF EXISTS kpihub."MV_ReportSummary_eu2";
+DROP TABLE IF EXISTS kpihub."MV_KPIReportSummary_eu1";
+DROP TABLE IF EXISTS kpihub."MV_KPIReportSummary_eu2";
 
-DROP PROCEDURE IF EXISTS kpihub.refresh_report_summary();
-DROP PROCEDURE IF EXISTS kpihub.refresh_report_summary_region(text, date);
-DROP PROCEDURE IF EXISTS kpihub.refresh_report_summary_customer(uuid, text, date);
+DROP PROCEDURE IF EXISTS kpihub.refresh_KPIReportSummary();
+DROP PROCEDURE IF EXISTS kpihub.refresh_KPIReportSummary_region(text, date);
+DROP PROCEDURE IF EXISTS kpihub.refresh_KPIReportSummary_customer(uuid, text, date);
 
-CREATE TABLE kpihub."MV_ReportSummary_eu1" (
+CREATE TABLE kpihub."MV_KPIReportSummary_eu1" (
   "ReportId" uuid PRIMARY KEY,
   "CustomerId" uuid NOT NULL,
   "ReportName" text,
@@ -63,27 +57,140 @@ CREATE TABLE kpihub."MV_ReportSummary_eu1" (
   "LastUpdated" timestamp
 );
 
-CREATE TABLE kpihub."MV_ReportSummary_eu2" (
+CREATE TABLE kpihub."MV_KPIReportSummary_eu2" (
   LIKE kpihub."MV_ReportSummary_eu1" INCLUDING ALL
 );
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu1_CustomerId_idx"
-  ON kpihub."MV_ReportSummary_eu1" ("CustomerId");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu1_CustomerId_idx"
+  ON kpihub."MV_KPIReportSummary_eu1" ("CustomerId");
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu2_CustomerId_idx"
-  ON kpihub."MV_ReportSummary_eu2" ("CustomerId");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu2_CustomerId_idx"
+  ON kpihub."MV_KPIReportSummary_eu2" ("CustomerId");
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu1_ReportDate_idx"
-  ON kpihub."MV_ReportSummary_eu1" ("ReportDate");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu1_ReportDate_idx"
+  ON kpihub."MV_KPIReportSummary_eu1" ("ReportDate");
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu2_ReportDate_idx"
-  ON kpihub."MV_ReportSummary_eu2" ("ReportDate");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu2_ReportDate_idx"
+  ON kpihub."MV_KPIReportSummary_eu2" ("ReportDate");
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu1_ReportArea_gix"
-  ON kpihub."MV_ReportSummary_eu1" USING GIST ("ReportArea");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu1_ReportArea_gix"
+  ON kpihub."MV_KPIReportSummary_eu1" USING GIST ("ReportArea");
 
-CREATE INDEX IF NOT EXISTS "MV_ReportSummary_eu2_ReportArea_gix"
-  ON kpihub."MV_ReportSummary_eu2" USING GIST ("ReportArea");
+CREATE INDEX IF NOT EXISTS "MV_KPIReportSummary_eu2_ReportArea_gix"
+  ON kpihub."MV_KPIReportSummary_eu2" USING GIST ("ReportArea");
+
+DROP FUNCTION IF EXISTS kpihub.get_new_reports_after_last_date(text, text);
+
+CREATE OR REPLACE FUNCTION kpihub.get_new_reports_after_last_date(
+    p_schema text,
+    p_mv_table text
+)
+RETURNS TABLE (
+    "ReportId" uuid,
+    "CustomerId" uuid,
+    "ReportName" text,
+    "ReportDate" timestamp,
+    "ReportYear" integer,
+    "ReportMonth" integer,
+    "ReportWeek" integer,
+    "ReportAssetLengthKm" double precision,
+    "AssetCoveredLengthKm" double precision,
+    "DistributionPipeKm" double precision,
+    "DistributionPipeCoveredKm" double precision,
+    "ServicePipeKm" double precision,
+    "ServicePipeCoveredKm" double precision,
+    "BoundaryName" text,
+    "BoundaryType" text,
+    "BoundaryMode" text,
+    "BoundaryPlant" text,
+    "BoundarySubplant" text,
+    "BoundaryRegion" text,
+    "BoundarySubRegion" text,
+    "ReportArea" geometry,
+    "LastUpdated" timestamp
+)
+LANGUAGE plpgsql
+AS $func$
+DECLARE
+    sql text;
+    last_report_date timestamp;
+    has_new_reports boolean;
+BEGIN
+    -- Resolve cutoff locally (fast index scan on MV table).
+    EXECUTE format(
+        'SELECT COALESCE(MAX("ReportDate"), ''2023-01-01''::timestamp) FROM kpihub.%I',
+        p_mv_table
+    )
+    INTO last_report_date;
+
+    -- Cheap probe: literal date in SQL so ogr_fdw can push "DateStarted > ..." to MSSQL.
+    -- Parameters ($1) and AT TIME ZONE in WHERE prevent pushdown → full remote scan.
+    EXECUTE format(
+        'SELECT EXISTS (
+            SELECT 1
+            FROM %I."Report" R
+            WHERE R."DateStarted" > %L::timestamp
+            LIMIT 1
+        )',
+        p_schema,
+        last_report_date
+    )
+    INTO has_new_reports;
+
+    IF NOT has_new_reports THEN
+        RETURN;
+    END IF;
+
+    sql :=
+    'SELECT
+        R."Id"::uuid AS "ReportId",
+        C."Id"::uuid AS "CustomerId",
+        CASE
+            WHEN RT."Description" = ''Compliance'' THEN ''CR-'' || SUBSTRING(R."Id"::text, 1, 6)
+            WHEN RT."Description" = ''Emissions'' THEN ''ER-'' || SUBSTRING(R."Id"::text, 1, 6)
+            ELSE ''CR-'' || SUBSTRING(R."Id"::text, 1, 6)
+        END::text AS "ReportName",
+        (R."DateStarted" AT TIME ZONE ''UTC'')::timestamp AS "ReportDate",
+        EXTRACT(YEAR FROM (R."DateStarted" AT TIME ZONE ''UTC''))::int AS "ReportYear",
+        EXTRACT(MONTH FROM (R."DateStarted" AT TIME ZONE ''UTC''))::int AS "ReportMonth",
+        EXTRACT(WEEK FROM (R."DateStarted" AT TIME ZONE ''UTC''))::int AS "ReportWeek",
+        RAC."AssetLengthKM" AS "ReportAssetLengthKm",
+        RAC."AssetLengthKM" * RC."PercentCoverageAssets" AS "AssetCoveredLengthKm",
+        RAC."DistributionPipeKm",
+        RAC."DistributionPipeCoveredKm",
+        RAC."ServicePipeKm",
+        RAC."ServicePipeCoveredKm",
+        dh.bo_name::text AS "BoundaryName",
+        dh.bo_type::text AS "BoundaryType",
+        dh.bo_mode::text AS "BoundaryMode",
+        dh.bo_plant::text AS "BoundaryPlant",
+        dh.bo_subplant::text AS "BoundarySubplant",
+        dh.bo_region::text AS "BoundaryRegion",
+        dh.bo_subregion::text AS "BoundarySubRegion",
+        RA."Shape" AS "ReportArea",
+        (NOW() AT TIME ZONE ''UTC'')::timestamp AS "LastUpdated"
+    FROM (
+        SELECT *
+        FROM "' || p_schema || '"."Report"
+        WHERE "DateStarted" > ' || quote_literal(last_report_date) || '::timestamp
+    ) R
+    INNER JOIN "' || p_schema || '"."Customer" C ON R."CustomerId" = C."Id"
+    INNER JOIN "' || p_schema || '"."ReportLabel" RL ON R."Id" = RL."ReportId"
+    INNER JOIN "' || p_schema || '"."Label" L ON RL."LabelId" = L."Id"
+    LEFT JOIN "' || p_schema || '"."ReportType" RT ON R."ReportTypeId" = RT."Id"
+    LEFT JOIN "' || p_schema || '"."ReportCompliance" RC ON R."Id" = RC."ReportId"
+    LEFT JOIN "' || p_schema || '"."ReportAreaCovered" RAC ON R."Id" = RAC."ReportId"
+    LEFT JOIN "' || p_schema || '"."ReportArea" RA ON R."Id" = RA."ReportId"
+    LEFT JOIN dash.v_report dh ON dh.rp_id = R."Id"::uuid
+    WHERE L."Title" = ''Final Checkbox''
+      AND RL."IsActive" = ''1''';
+
+    RETURN QUERY EXECUTE sql;
+END;
+$func$;
+
+COMMENT ON FUNCTION kpihub.get_new_reports_after_last_date(text, text) IS
+  'Returns Final Checkbox reports newer than the latest ReportDate in the target MV table (UTC timestamps).';
 
 CREATE OR REPLACE PROCEDURE kpihub.refresh_report_summary_customer(
   p_customer_id uuid,

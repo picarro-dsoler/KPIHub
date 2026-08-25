@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 CREATE EXTENSION IF NOT EXISTS ogr_fdw;
+CREATE EXTENSION IF NOT EXISTS tds_fdw;
 
 CREATE SCHEMA IF NOT EXISTS kpihub AUTHORIZATION dsoler;
 CREATE SCHEMA IF NOT EXISTS eu1 AUTHORIZATION dsoler;
@@ -109,6 +110,63 @@ BEGIN
   LOOP
     EXECUTE format(
       'ALTER FOREIGN TABLE eu2.%I RENAME TO %I',
+      r.foreign_table_name,
+      substr(r.foreign_table_name, 5)
+    );
+  END LOOP;
+END $$;
+
+-- EU2 hybrid: tds_fdw for tabular tables, ogr_fdw (eu2_srv) for ReportArea geometry only.
+CREATE SCHEMA IF NOT EXISTS eu2_tds AUTHORIZATION dsoler;
+CREATE SCHEMA IF NOT EXISTS eu2_geo AUTHORIZATION dsoler;
+
+CREATE SERVER IF NOT EXISTS eu2_tds_srv
+  FOREIGN DATA WRAPPER tds_fdw
+  OPTIONS (
+    servername 'eu-prd2-sqlsrv-ee-db01.czz1yneu9gmr.eu-central-1.rds.amazonaws.com',
+    port '1433',
+    database 'EU-SurveyorProduction2',
+    tds_version '7.4'
+  );
+
+CREATE USER MAPPING IF NOT EXISTS FOR dsoler
+  SERVER eu2_tds_srv
+  OPTIONS (username 'dsoler', password '2twN2cY0uIwm');
+
+IMPORT FOREIGN SCHEMA dbo
+  LIMIT TO (
+    "Customer",
+    "Report",
+    "ReportLabel",
+    "Label",
+    "ReportType",
+    "ReportCompliance",
+    "ReportAreaCovered"
+  )
+  FROM SERVER eu2_tds_srv
+  INTO eu2_tds;
+
+IMPORT FOREIGN SCHEMA ogr_all
+  LIMIT TO ("dbo.ReportArea")
+  FROM SERVER eu2_srv
+  INTO eu2_geo
+  OPTIONS (
+    launder_table_names 'false',
+    launder_column_names 'false'
+  );
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT foreign_table_name
+    FROM information_schema.foreign_tables
+    WHERE foreign_table_schema = 'eu2_geo'
+      AND foreign_table_name LIKE 'dbo.%'
+  LOOP
+    EXECUTE format(
+      'ALTER FOREIGN TABLE eu2_geo.%I RENAME TO %I',
       r.foreign_table_name,
       substr(r.foreign_table_name, 5)
     );
