@@ -37,7 +37,7 @@ KPI_OutputExcelLocation.reinit_table(arguments={'db_path': DB_PATH})
 
 #Customer Tables
 KPI_Customer.reinit_table(arguments={'db_path': DB_PATH})
-
+KPI_Country.reinit_table(arguments={'db_path': DB_PATH})
 #POR Table
 KPI_POR.reinit_table(arguments={'db_path': DB_PATH, 'pair_key': ['CustomerId', 'Year']})
 

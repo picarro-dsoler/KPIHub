@@ -64,7 +64,8 @@ def get_reports_by_id(report_id_table = None, table_name = None):
     return query
 
 @setup_query
-def get_reports(customer_name, table_name = None, starting_date=None, final_checkbox = True):
+def get_reports(customer_name, table_name = None, report_id_table = None, starting_date=None, final_checkbox = True):
+
     date_filter = ""
     if starting_date:
         date_filter = f"AND R.DateStarted >= '{starting_date}'"
@@ -118,11 +119,11 @@ def get_reports(customer_name, table_name = None, starting_date=None, final_chec
     LEFT JOIN ReportCompliance RC ON R.Id = RC.ReportId
     LEFT JOIN ReportAreaCovered RAC ON R.Id = RAC.ReportId
     WHERE
-        LOWER(C.Name) = LOWER('{customer_name}')
-        AND L.Title = 'Final Checkbox'
-        AND RL.IsActive = 1
-        {date_filter}
     """
+    if report_id_table is not None:
+        query += f"R.Id IN (SELECT ReportId FROM {report_id_table})  AND L.Title = 'Final Checkbox' AND RL.IsActive = 1"
+    else:
+        query += f"LOWER(C.Name) = LOWER('{customer_name}') AND L.Title = 'Final Checkbox' AND RL.IsActive = 1 {date_filter}"
     return query
 
 
@@ -216,3 +217,28 @@ def query_segments_table(survey_table = None, table_name = None):
     query = f"""SELECT {segments_Columns.get_columns()}, S.[Order] as [Order] {into_clause} FROM Segment S WHERE S.SurveyId IN (SELECT SurveyId FROM {survey_table}) """
     return query
 
+@setup_query
+def get_emission_soruces_for_RER(report_table, table_name = None):
+    if table_name is not None:
+        into_clause = f"INTO {table_name}"
+    else:
+        into_clause = ""
+
+    query = f"""
+    SELECT 
+        Es.ReportId,
+        Es.Id AS EmissionSourceId,
+        Es.Disposition,
+        Es.IsFiltered,
+        Es.CH4,
+        ES.EmissionRate
+    FROM
+        EmissionSource ES
+    LEFT JOIN Report R ON ES.ReportId = R.Id
+    LEFT JOIN ReportArea RA ON ES.ReportId = RA.ReportId
+    WHERE
+        ES.ReportId IN (SELECT ReportId FROM {report_table})
+        AND ES.EmissionRate > 0 
+        AND (Es.Disposition = 1 OR Es.Disposition = 3)
+    """
+    return query

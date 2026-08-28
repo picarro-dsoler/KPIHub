@@ -2,7 +2,7 @@ import sqlite3
 from locallib.picarrodb import *
 from datetime import date
 #DB_PATH = 'database/KPIHub_Dev.db'
-DB_PATH = 'database/KPIHub_Dev.db'
+DB_PATH = 'database/KPIHub.db'
 INGESTER_LOG_PATH = 'logs/'
 
 #Refreshing configuration
@@ -14,8 +14,12 @@ STARTING_DATE = date(STARTING_YEAR, 1, 1)
 CONN_DICT = {'EU1':EU1_Conn, 'EU2': EU2_Conn}
 
 #KPI Configuration
-SUNRISE_TIME = 6
-SUNSET_TIME = 20
+#SUNRISE_TIME = 6
+#SUNSET_TIME = 20
+WORKING_HOURS = 6
+WORKING_DAYS = 5
+SUNSET_TIME = 19
+SUNRISE_TIME = 7
 SPEED_THRESHOLD = 0.5
 
 #Excel Output Configuration

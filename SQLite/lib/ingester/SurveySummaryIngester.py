@@ -141,60 +141,61 @@ class SurveySummaryIngester(Ingester):
         customer_name = self.customer_info['Name']
         customer_id = self.customer_info['CustomerId']
         customer_db = self.customer_info['DBLocation']
-
         self.Logger.info(f"Processing customer: {customer_name}")
-        self.Logger.info(f"Getting reports from {self.update_window} to {self.current_date}")
-        #Query the last report
-        self.data['reports'] = Query(
-            f"""
-            SELECT ReportId, ReportDate, ReportArea, LastUpdated FROM KPI_ReportSummary
-            WHERE CustomerId = '{self.customer_info['CustomerId']}'
-            ORDER BY LastUpdated DESC
-            """
-        ).execute(KPIHub_Conn)
 
-        self.data['survey_count'] = Query(
-            f"""
-            SELECT COUNT(*) as SurveyCount
-            FROM KPI_SurveySummary
-            WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{customer_id}')
-            """
-        ).execute(KPIHub_Conn)
+        #Query the reports from KPI_EmissionSources
+        query_kpi_survey_summary = f"""SELECT DISTINCT ReportId FROM KPI_SurveySummary WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}')"""
+        reports_kpi_survey_summary = Query(query = query_kpi_survey_summary).execute(KPIHub_Conn)
+        num_reports_kpi_survey_summary = len(reports_kpi_survey_summary)
 
-        if len(self.data['reports']) > 0:
-            if (self.data['survey_count'].iloc[0]['SurveyCount']) > 0:
+        #Query the reports from KPI_ReportSummary
+        query_kpi_report = f"""SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}'"""
+        reports_kpi_hub = Query(query = query_kpi_report).execute(KPIHub_Conn)
+        num_reports_kpi_hub = len(reports_kpi_hub)
+
+        #Check if there are new reports
+        reports_into = reports_kpi_hub[~reports_kpi_hub['ReportId'].isin(reports_kpi_survey_summary['ReportId'])]
+        reports_deleted = reports_kpi_survey_summary[~reports_kpi_survey_summary['ReportId'].isin(reports_kpi_hub['ReportId'])]
+
+        self.data['reports_into'] = reports_into.copy()
+        self.data['reports_deleted'] = reports_deleted.copy()
+        self.data['num_reports_kpi_survey_summary'] = num_reports_kpi_survey_summary
+        self.data['num_reports_kpi_hub'] = num_reports_kpi_hub
+
+        if (num_reports_kpi_hub > 0):
+            self.Logger.info(f"Number of reports in KPI_ReportSummary: {num_reports_kpi_hub}")
+            if(num_reports_kpi_survey_summary == 0):
+                #No reports in the KPI_EmissionSources
+                self.Logger.info("No reports in KPIHub, starting from the beginning")
                 self.check_flag = True
-                self.starting_date = self.update_window
-                self.Logger.info(f"Getting emissions from {self.update_window} to {self.current_date}")
-                print(self.data['survey_count'].iloc[0]['SurveyCount'])
             else:
-                self.Logger.info(f"No emissions found, processing from start")
-                self.starting_date = STARTING_DATE
-                self.check_flag = True
+                #Reports in the KPIHub
+                self.Logger.info(f"Number of reports in KPI_SurveySummary: {num_reports_kpi_survey_summary}")
+                if len(reports_into) > 0 or len(reports_deleted) > 0:
+                    self.Logger.info(f"Number of new reports into the KPI_SurveySummary: {len(reports_into)}")
+                    self.Logger.info(f"Number of deleted reports in the KPI_ReportSummary: {len(reports_deleted)}")
+                    self.check_flag = True
+                else:
+                    self.Logger.info("No new reports into the KPI_SurveySummary or deleted reports in the KPI_SurveySummary")
+                    self.check_flag = False
         else:
-            self.Logger.info(f"No reports found, skipping")
+            self.Logger.info("No reports in KPI_ReportSummary")
             self.check_flag = False
 
     def query_data(self):
-        if self.check_flag:
-            # Ensure the ReportDate values are in datetime format before comparison,
-            # handling both with and without microseconds (mixed formats)
-            self.data['reports']['ReportDate'] = pd.to_datetime(self.data['reports']['ReportDate'], format='mixed')
-
-            # Handle potential issues with type mismatch when comparing datetimes
-            # Coerce both sides to date for a robust comparison
-            reports_to_query = self.data['reports'][
-                pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
-            ]
-            if(len(reports_to_query) == 0):
-                self.Logger.info(f"No reports found, skipping")
-                return
-
+        if self.check_flag and len(self.data['reports_into']) > 0:
+            reports_into = self.data['reports_into'].copy()
+            reports_into.db.set_query(get_reports(self.customer_info['Name'], starting_date=self.starting_date, report_id_table = '#TempReport', final_checkbox = True))
+            reports_to_query = reports_into.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReport')
             reports_to_query.db.set_query(query_surveys_table(report_table="#TempReports"))
             surveys = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
             surveys.db.set_query(query_segments_table(survey_table="#TempSurvey"))
             self.Logger.info(f"Reports from KPI_ReportSummary: {len(reports_to_query)}")
             self.Logger.info(f"Surveys from LSDB: {len(surveys)}")
+            if len(surveys) == 0:
+                self.Logger.info(f"No surveys found, skipping")
+                self.check_flag = False
+                return
             segments = surveys.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'SurveyId', temp_table_name = '#TempSurvey')
             self.Logger.info(f"Segments from LSDB: {len(segments)}")
 
@@ -278,6 +279,11 @@ class SurveySummaryIngester(Ingester):
                     outputs.append(output)
        
 
+            if not outputs:
+                self.Logger.info("No segment intersections found for any report, skipping")
+                self.check_flag = False
+                return
+
             output_df = pd.DataFrame(outputs)
             merged_df = pd.merge(
                 survey_summary,
@@ -299,8 +305,11 @@ class SurveySummaryIngester(Ingester):
         self.Logger.info(f"Total number of unique reports from KPI_SurveySummary: {len(df_surveys)}")
 
     def push_data(self):
-        super().push_data(primary_key = ['SurveyId','ReportId'])
-        self.Logger.info(f"Data pushed to {db_path}")
+        if self.check_flag and len(self.data['output']) > 0:
+            super().push_data(primary_key = ['SurveyId','ReportId'])
+            self.Logger.info(f"Data pushed to {db_path}")
+        else:
+            self.Logger.info(f"No data to push")
 
 
 # Define a function to determine if survey is in 'day' or 'night'

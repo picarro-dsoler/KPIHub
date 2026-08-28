@@ -30,9 +30,8 @@ class ReportSummaryIngester(Ingester):
 
     def update_check(self):
         self.Logger.info(f"Processing customer: {self.customer_info['Name']}")
-        
-        # Query to get the number of different ReportId from reports from the very beggining
-        query =   f"""SELECT COUNT(DISTINCT R.Id) as ReportCount FROM
+     # Query to get the number of different ReportId from reports from the very beggining
+        query =   f"""SELECT R.Id as ReportId FROM
             Report R
         LEFT JOIN Customer C ON
             R.CustomerId = C.Id
@@ -46,33 +45,49 @@ class ReportSummaryIngester(Ingester):
         LEFT JOIN ReportCompliance RC ON R.Id = RC.ReportId
         LEFT JOIN ReportAreaCovered RAC ON R.Id = RAC.ReportId
         WHERE
-            R.CustomerId = '{self.customer_info['CustomerId']}' AND R.DateStarted >= '{STARTING_DATE}' AND L.Title = 'Final Checkbox' AND RL.IsActive = 1
+            R.CustomerId = '{self.customer_info['CustomerId']}' AND R.DateStarted >= '{self.starting_date}' AND L.Title = 'Final Checkbox' AND RL.IsActive = 1
             AND L.Title = 'Final Checkbox'
             AND RL.IsActive = 1
         """
+        reports_list_lsdb = Query(query =query).execute(CONN_DICT[self.customer_info['DBLocation']])
+        num_reports_lsdb = len(reports_list_lsdb)
 
-        numReports = Query(query =query).execute(CONN_DICT[self.customer_info['DBLocation']])
-        num_unique_report_ids = numReports.iloc[0]['ReportCount'] if len(numReports) > 0 else 0
-        self.Logger.info(f"Number of unique Reports in LSDB: {num_unique_report_ids}")
+        #Query the reports from the KPIHub
+        query_kpi_report = f"""SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}'"""
+        reports_kpi_hub = Query(query = query_kpi_report).execute(KPIHub_Conn)
+        num_reports_kpi_hub = len(reports_kpi_hub)
+        reports_into = reports_list_lsdb[~reports_list_lsdb['ReportId'].isin(reports_kpi_hub['ReportId'])]
+        reports_deleted = reports_kpi_hub[~reports_kpi_hub['ReportId'].isin(reports_list_lsdb['ReportId'])]
 
-        #Query the last report from the KPIHUb
-        query = Query(f"SELECT * FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}' ORDER BY LastUpdated DESC LIMIT 1").execute(KPIHub_Conn)
+        self.data['reports_into'] = reports_into
+        self.data['reports_deleted'] = reports_deleted
+        self.data['num_reports_lsdb'] = num_reports_lsdb
+        self.data['num_reports_kpi_hub'] = num_reports_kpi_hub
 
-        #If there are none query from the very beggining
-        if len(query) > 0:
-            last_updated = query.iloc[0]['LastUpdated']
-            self.starting_date = self.update_window
-            self.check_flag = True
-            self.Logger.info(f"Last updated: {last_updated}, processing")
+        
+        if (num_reports_lsdb > 0):
+            self.Logger.info(f"Number of reports in LSDB: {num_reports_lsdb}")
+            if(num_reports_kpi_hub == 0):
+                #No reports in the KPIHub
+                self.Logger.info("No reports in KPIHub, starting from the beginning")
+                self.check_flag = True
+            else:
+                #Reports in the KPIHub
+                self.Logger.info(f"Number of reports in KPIHub: {num_reports_kpi_hub}")
+                if len(reports_into) > 0 or len(reports_deleted) > 0:
+                    self.Logger.info(f"Number of new reports into the KPIHub: {len(reports_into)}")
+                    self.Logger.info(f"Number of deleted reports in the KPIHub: {len(reports_deleted)}")
+                    self.check_flag = True
+                else:
+                    self.Logger.info("No new reports into the KPIHub or deleted reports in the KPIHub")
+                    self.check_flag = False
         else:
-            self.Logger.info(f"No reports found, starting from {self.starting_date}")
-            self.check_flag = True
-            self.starting_date = STARTING_DATE
+            self.Logger.info("No reports in LSDB")
+            self.check_flag = False
 
     def query_data(self):
-        if self.check_flag:
-            query = get_reports(self.customer_info['Name'], starting_date=self.starting_date, final_checkbox = True)
-            LSDB_COLS = [
+        DATAHUB_COLS = ['ReportId', 'BoundaryName', 'BoundaryType', 'BoundaryMode', 'BoundaryPlant', 'BoundarySubplant', 'BoundaryRegion', 'BoundarySubRegion']
+        LSDB_COLS = [
                 'ReportId',
                 'CustomerId',
                 'ReportName',
@@ -88,10 +103,15 @@ class ReportSummaryIngester(Ingester):
                 'ServicePipeCoveredKm',
                 'ReportArea',
             ]
-
-            DATAHUB_COLS = ['ReportId', 'BoundaryName', 'BoundaryType', 'BoundaryMode', 'BoundaryPlant', 'BoundarySubplant', 'BoundaryRegion', 'BoundarySubRegion']
-
-            reports_lsdb = query.execute(CONN_DICT[self.customer_info['DBLocation']])
+        if self.check_flag:
+            if len(self.data['reports_into']) == self.data['num_reports_lsdb']:
+                self.Logger.info(f"Updating reports")
+                query = get_reports(self.customer_info['Name'], starting_date=self.starting_date, final_checkbox = True)
+                reports_lsdb = query.execute(CONN_DICT[self.customer_info['DBLocation']])
+            else:
+                reports_temp = self.data['reports_into'].copy()
+                reports_temp.db.set_query(get_reports(self.customer_info['Name'], starting_date=self.starting_date, report_id_table = '#TempReport', final_checkbox = True))
+                reports_lsdb = reports_temp.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReport')
             if self.customer_info['DBLocation'] == 'EU1' or self.customer_info['DBLocation'] == 'EU2':
                 reports_lsdb.db.set_query(query_reports_view(report_table = 'temp_reports'))
                 reports_datahub = reports_lsdb.db.execute(DATAHUB_Conn, source_col = 'ReportId', temp_table_name = 'temp_reports')
@@ -108,13 +128,14 @@ class ReportSummaryIngester(Ingester):
                 reports = reports_lsdb[LSDB_COLS]
             # Add/update the LastUpdated column to the reports DataFrame as current timestamp
             reports['LastUpdated'] = datetime.now()
-            self.Logger.info(f"Reports from LSDB starting from {self.starting_date}: {len(reports)}")
             self.data['output'] = reports
+
 
     def sanity_check(self):
         super().sanity_check()
         df_kpi = Query(query = f"SELECT * FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
         self.Logger.info(f"Total reports from KPI_ReportSummary: {len(df_kpi)}")
+
 
 
 class ReportSummaryListIngester(ReportSummaryIngester):

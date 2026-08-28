@@ -106,17 +106,18 @@ class KPITable(DBTable):
             return self.sql_list[query]
         else:
             return self.sql_list[query]
+
     def update_table(self, arguments = None):
-        #Load the content of the df into a temp table
-        #Bulk update
+        # Load the content of the df into a temp table
+        # Bulk update
         df = arguments['DataFrame']
         primary_key = arguments['PrimaryKey']
         if isinstance(primary_key, list):
             pk_cols = set(primary_key)
-            primary_key = ','.join(primary_key)
+            primary_key_str = ','.join(primary_key)
         elif isinstance(primary_key, str):
             pk_cols = {primary_key}
-            primary_key = primary_key
+            primary_key_str = primary_key
         else:
             raise ValueError("PrimaryKey must be a list of strings or a single string")
 
@@ -131,7 +132,7 @@ class KPITable(DBTable):
         insert_sql = f"""
             INSERT INTO {self.name} ({columns})
             VALUES ({placeholders})
-            ON CONFLICT({primary_key}) DO UPDATE SET
+            ON CONFLICT({primary_key_str}) DO UPDATE SET
             {updates};
         """
 
@@ -161,5 +162,57 @@ class KPITable(DBTable):
         data = [tuple(clean_value(row[col]) for col in cols) for _, row in df.iterrows()]
         cursor.executemany(insert_sql, data)  # use executemany for efficiency
 
+        conn.commit()
+        conn.close()
+
+    def delete_data(self, arguments = None):
+        """
+        Deletes rows from the table where the primary key(s) match the provided value(s).
+        arguments must contain:
+            - 'db_path' (str): path to the sqlite DB
+            - 'PrimaryKey' (str or list): column(s) to match
+            - 'KeyValues' (list of dict): each dict has {primary_key_col: value, ...} or a DataFrame of keys
+        """
+        if arguments is None:
+            raise ValueError("Arguments are required")
+        if 'db_path' not in arguments:
+            raise ValueError("db_path is required")
+        if 'PrimaryKey' not in arguments:
+            raise ValueError("PrimaryKey is required")
+        if 'KeyValues' not in arguments:
+            raise ValueError("KeyValues is required (list of dicts or DataFrame)")
+        
+        db_path = arguments['db_path']
+        primary_key = arguments['PrimaryKey']
+        key_values = arguments['KeyValues']
+
+        if isinstance(primary_key, list):
+            pk_cols = primary_key
+        elif isinstance(primary_key, str):
+            pk_cols = [primary_key]
+        else:
+            raise ValueError("PrimaryKey must be a list of strings or a single string")
+
+        # Accept KeyValues either as a DataFrame OR a list of dicts
+        if isinstance(key_values, pd.DataFrame):
+            keys_list = key_values[pk_cols].to_dict(orient='records')
+        elif isinstance(key_values, list):
+            keys_list = key_values
+        else:
+            raise ValueError("KeyValues must be a DataFrame or list of dicts")
+
+        conn = _connect(db_path)
+        cursor = conn.cursor()
+
+        where_clause = " AND ".join([f"{col} = ?" for col in pk_cols])
+        sql = f"DELETE FROM {self.name} WHERE {where_clause}"
+
+        # Prepare tuples of key values for each row to delete
+        values_list = []
+        for key_dict in keys_list:
+            values = tuple(key_dict.get(col) for col in pk_cols)
+            values_list.append(values)
+
+        cursor.executemany(sql, values_list)
         conn.commit()
         conn.close()

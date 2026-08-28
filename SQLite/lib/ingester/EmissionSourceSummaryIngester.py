@@ -36,59 +36,57 @@ class EmissionSourceSummaryIngester(Ingester):
         customer_db = self.customer_info['DBLocation']
 
         self.Logger.info(f"Processing customer: {customer_name}")
-        self.Logger.info(f"Getting reports from {self.update_window} to {self.current_date}")
+        
+        #Query the reports from KPI_EmissionSources
+        query_kpi_emission_sources = f"""SELECT ReportId FROM KPI_EmissionSourceSummary WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}')"""
+        reports_kpi_emission_sources = Query(query = query_kpi_emission_sources).execute(KPIHub_Conn)
+        num_reports_kpi_emission_sources = len(reports_kpi_emission_sources)
 
-        #Query the last report
-        self.data['reports'] = Query(
-            f"""
-            SELECT ReportId, ReportDate, LastUpdated FROM KPI_ReportSummary
-            WHERE CustomerId = '{customer_id}'
-            ORDER BY LastUpdated DESC
-            """
-        ).execute(KPIHub_Conn)
+        #Query the reports from KPI_ReportSummary
+        query_kpi_report = f"""SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}'"""
+        reports_kpi_hub = Query(query = query_kpi_report).execute(KPIHub_Conn)
+ 
+        num_reports_kpi_hub = len(reports_kpi_hub)
 
-        self.data['emissions_count'] = Query(
-            f"""
-            SELECT COUNT(*) as EmissionCount
-            FROM KPI_EmissionSourceSummary
-            WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{customer_id}')
-            """
-        ).execute(KPIHub_Conn)
-        self.Logger.info(f"Getting emissions from {self.update_window} to {self.current_date}")
+        #Check if there are new reports
+        reports_into = reports_kpi_hub[~reports_kpi_hub['ReportId'].isin(reports_kpi_emission_sources['ReportId'])]
+        reports_deleted = reports_kpi_emission_sources[~reports_kpi_emission_sources['ReportId'].isin(reports_kpi_hub['ReportId'])]
 
-        if len(self.data['reports']) > 0:
-            if (self.data['emissions_count'].iloc[0]['EmissionCount']) > 0:
+        self.data['reports_into'] = reports_into.copy()
+        self.data['reports_deleted'] = reports_deleted.copy()
+        self.data['num_reports_kpi_emission_sources'] = num_reports_kpi_emission_sources
+        self.data['num_reports_kpi_hub'] = num_reports_kpi_hub
+
+        if (num_reports_kpi_hub > 0):
+            self.Logger.info(f"Number of reports in KPI_ReportSummary: {num_reports_kpi_hub}")
+            if(num_reports_kpi_emission_sources == 0):
+                #No reports in the KPI_EmissionSources
+                self.Logger.info("No reports in KPIHub, starting from the beginning")
                 self.check_flag = True
-                self.starting_date = pd.to_datetime(self.update_window)
-
             else:
-                self.Logger.info(f"No emissions found")
-                self.starting_date = STARTING_DATE
-                self.check_flag = True
+                #Reports in the KPIHub
+                self.Logger.info(f"Number of reports in KPI_EmissionSources: {num_reports_kpi_emission_sources}")
+                if len(reports_into) > 0 or len(reports_deleted) > 0:
+                    self.Logger.info(f"Number of new reports into the KPI_EmissionSources: {len(reports_into)}")
+                    self.Logger.info(f"Number of deleted reports in the KPI_ReportSummary: {len(reports_deleted)}")
+                    self.check_flag = True
+                else:
+                    self.Logger.info("No new reports into the KPI_EmissionSources or deleted reports in the KPI_EmissionSources")
+                    self.check_flag = False
         else:
-            self.Logger.info(f"No reports found")
+            self.Logger.info("No reports in KPI_ReportSummary")
             self.check_flag = False
 
     def query_data(self):
-        if self.check_flag:
-            # Ensure the ReportDate values are in datetime format before comparison,
-            # handling both with and without microseconds (mixed formats)
-            self.data['reports']['ReportDate'] = pd.to_datetime(self.data['reports']['ReportDate'], format='mixed')
-    
-            reports_to_query = self.data['reports'][
-                pd.to_datetime(self.data['reports']['ReportDate']).dt.date >= pd.to_datetime(self.starting_date).date()
-            ]
-            if reports_to_query.empty:
-                self.Logger.info("No reports in update window, skipping")
-                self.check_flag = False
-                return
+        if self.check_flag and len(self.data['reports_into']) > 0:
+            reports_to_query = self.data['reports_into'].copy()
             reports_to_query.db.set_query(query_emission_sources_table(report_table = '#TempReports'))
             emission_sources = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
             emissions_summary = emission_sources.groupby("ReportId").apply(summarize_emission).reset_index()
             # Merge with reports_to_query to fill zeros for missing emission records per report
             merged_reports = reports_to_query[['ReportId']].merge(emissions_summary, on="ReportId", how="left")
             merged_reports.fillna(0, inplace=True)
-     
+    
             merged_reports['LastUpdated'] = datetime.now()
             self.data['output'] = merged_reports
         else:

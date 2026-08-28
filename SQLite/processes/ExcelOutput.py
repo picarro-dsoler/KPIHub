@@ -115,7 +115,8 @@ if __name__ == "__main__":
         """
         result = Query(query=query_string).execute(KPIHub_Conn)
         if result.empty:
-            raise ValueError(f"No output Excel location found for customer: {customer_name}")
+            print(f"No output Excel location found for customer: {customer_name}")
+            continue
         box_folder_id = result['BoxFolderId'].values[0]
 
         #Get the columns of the view and get the KPI definitions
@@ -127,7 +128,9 @@ if __name__ == "__main__":
 
         regions = Query(f"SELECT DISTINCT BoundaryRegion FROM Weekly_KPI WHERE CustomerName = '{customer_name}'").execute(KPIHub_Conn)
         kpi_data = Query(f"SELECT * FROM Weekly_KPI WHERE CustomerName = '{customer_name}' AND Year = {year}").execute(KPIHub_Conn)
-
+        if kpi_data.empty:
+            print(f"No data found for customer: {customer_name} and year: {year}")
+            continue
         # KPI value columns from the view (exclude meta)
         view_cols = cols['name'].tolist() if 'name' in cols.columns else list(kpi_data.columns)
         value_columns = [c for c in view_cols if c not in META_COLS]

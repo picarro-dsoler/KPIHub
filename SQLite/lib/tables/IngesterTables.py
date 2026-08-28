@@ -182,3 +182,13 @@ KPI_Data.add_column(DBColumn('PeriodValue', datatype='int'))
 KPI_Data.add_column(DBColumn('Value', datatype='nvarchar'))
 KPI_Data.add_column(DBColumn('DataType', datatype='nvarchar'))
 KPI_Data.add_column(DBColumn('LastUpdated', datatype='datetime'))
+
+#KPI Emission Distribution
+KPI_EmissionDistribution = KPITable('KPI_EmissionDistribution')
+KPI_EmissionDistribution.add_column(DBColumn('EmissionSourceId', datatype='uniqueidentifier', key='primary'))
+KPI_EmissionDistribution.add_column(DBColumn('ReportId', datatype='uniqueidentifier'))
+KPI_EmissionDistribution.add_column(DBColumn('Disposition', datatype='int'))
+KPI_EmissionDistribution.add_column(DBColumn('IsFiltered', datatype='int'))
+KPI_EmissionDistribution.add_column(DBColumn('CH4', datatype='float'))
+KPI_EmissionDistribution.add_column(DBColumn('EmissionRate', datatype='float'))
+KPI_EmissionDistribution.add_column(DBColumn('LastUpdated', datatype='datetime'))

@@ -1,13 +1,16 @@
 import os
 import sys
 import pandas as pd
-# Get the absolute path of the current file's directory
+# IngesterClass.py lives at KPIHub/SQLite/lib/ingester/
 directory = os.path.abspath(os.path.dirname(__file__))
+KPIHUB_ROOT = os.path.abspath(os.path.join(directory, "..", ".."))
 
 # Just add the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(directory, "..")))
 
 from config import *
+from KPIHubConnection import *
+
 from locallib.picarrodb import *
 from locallib.pandas import *
 from locallib.slack import *
@@ -26,7 +29,9 @@ class Ingester:
     def __init__(self, arguments):
         #Start the logger
         self.name = self.__class__.__name__
-        LOG_PATH = os.path.abspath(os.path.join(directory, "..", "..", INGESTER_LOG_PATH, f'{self.name}.log'))
+        log_dir = os.path.join(KPIHUB_ROOT, INGESTER_LOG_PATH)
+        os.makedirs(log_dir, exist_ok=True)
+        LOG_PATH = os.path.join(log_dir, f'{self.name}.log')
         Logger = Loggers(logger_name = self.name, keys = ['File', 'Slack'])
         Logger.clear_handlers()
 
@@ -47,8 +52,8 @@ class Ingester:
 
         self.update_window = self.get_update_window()
         self.current_date = date.today()
-        self.starting_date = None
-        self.check_flag = False
+        self.starting_date = STARTING_DATE
+        self.check_status = False
         self.data = {}
         
         self.customer_info = None
@@ -66,6 +71,7 @@ class Ingester:
 
     def query_data(self):
         self.Logger.info(f"Querying data for {self.name}")
+        
         pass
 
     def process_data(self):
@@ -73,14 +79,26 @@ class Ingester:
         pass
 
     def push_data(self, primary_key = 'ReportId'):
+        db_path = os.path.join(KPIHUB_ROOT, DB_PATH)
         if self.check_flag:
             # Fix db path to go two parent folders before pointing to database/KPIHUB.db
-            db_path = os.path.abspath(os.path.join(directory, "..", "..", DB_PATH))
-       
-            self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': primary_key})
-            self.Logger.info(f"Data pushed to {db_path}")
+            if len(self.data['reports_into']) > 0:
+                self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': primary_key})
+                self.Logger.info(f"Data pushed to {db_path}")
         else:
             self.Logger.info(f"No data to push")
+
+    def delete_data(self, primary_key = 'ReportId'):
+        db_path = os.path.join(KPIHUB_ROOT, DB_PATH)
+        if self.check_flag:
+            if len(self.data['reports_deleted']) > 0:
+                self.table.delete_data(arguments = {'db_path': db_path, 'PrimaryKey': primary_key, 'KeyValues': self.data['reports_deleted']})
+                self.Logger.info(f"Data deleted from {db_path}")
+            else:
+                self.Logger.info(f"No data to delete")
+        else:
+            self.Logger.info(f"No data to delete")
+
 
     def sanity_check(self):
         self.Logger.info(f"Sanity checking data for {self.name}")
