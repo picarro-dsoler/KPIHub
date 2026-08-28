@@ -103,7 +103,7 @@ class ReportSummaryIngester(Ingester):
                 'ServicePipeCoveredKm',
                 'ReportArea',
             ]
-        if self.check_flag:
+        if self.check_flag and len(self.data['reports_into']) > 0:
             if len(self.data['reports_into']) == self.data['num_reports_lsdb']:
                 self.Logger.info(f"Updating reports")
                 query = get_reports(self.customer_info['Name'], starting_date=self.starting_date, final_checkbox = True)
