@@ -38,6 +38,7 @@ if __name__ == "__main__":
         reportIngester.update_check()
         reportIngester.query_data()
         reportIngester.push_data()
+        reportIngester.delete_data()
         reportIngester.sanity_check()
 
         surveyIngester = SurveySummaryIngester(arguments)
@@ -45,6 +46,7 @@ if __name__ == "__main__":
         surveyIngester.update_check()
         surveyIngester.query_data()
         surveyIngester.push_data()
+        surveyIngester.delete_data()
         surveyIngester.sanity_check()
         
         emissionSourceIngester = EmissionSourceSummaryIngester(arguments)
@@ -52,6 +54,7 @@ if __name__ == "__main__":
         emissionSourceIngester.update_check()
         emissionSourceIngester.query_data()
         emissionSourceIngester.push_data()
+        emissionSourceIngester.delete_data()
         emissionSourceIngester.sanity_check()
 
         #if customer['Name'] == 'Cadent':
