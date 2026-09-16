@@ -90,6 +90,7 @@ def get_reports(customer_name, table_name = None, report_id_table = None, starti
             ELSE CONCAT('CR-', SUBSTRING(CONVERT(nvarchar(50), R.Id), 1, 6))
         END AS ReportName,
         R.Id AS ReportId,
+        (SELECT Description FROM TimeZone WHERE Id = R.TimeZoneId) AS TimeZone,
         R.ReportTitle AS ReportTitle,
         L.Title AS Label,
         R.DateStarted AS ReportDate,

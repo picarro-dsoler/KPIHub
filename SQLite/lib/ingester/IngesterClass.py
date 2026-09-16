@@ -21,6 +21,35 @@ import os
 from datetime import date, timedelta
 from query.bank import *
 
+
+def _resolve_timezone(timezone_name):
+    """Map LSDB Windows timezone names to IANA names for pandas/pytz."""
+    if pd.isna(timezone_name):
+        return None
+    timezone_name = str(timezone_name)
+    return COMMON_TIMEZONE_MAPPINGS.get(timezone_name, timezone_name)
+
+
+def convert_utc_to_local(timestamps, timezones, unit=None):
+    """Convert UTC timestamps to per-row local timezones.
+
+    pandas dt.tz_convert() only accepts a single timezone, not a Series.
+    LSDB stores Windows timezone names (e.g. 'Central European Standard Time').
+    """
+    utc = pd.to_datetime(timestamps, unit=unit, utc=True)
+    if not isinstance(timezones, pd.Series):
+        timezones = pd.Series(timezones, index=utc.index)
+    return pd.Series(
+        [
+            timestamp.tz_convert(_resolve_timezone(tz))
+            if pd.notna(tz) and _resolve_timezone(tz) is not None
+            else timestamp
+            for timestamp, tz in zip(utc, timezones)
+        ],
+        index=utc.index,
+    )
+
+
 #Class used to get any data inside the data KPI HUb database
 # The inggester focuses on a single table at a time
 

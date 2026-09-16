@@ -18,7 +18,7 @@ from tables.IngesterTables import *
 from config import *
 from KPIHubConnection import *
 from query.bank import *
-from IngesterClass import Ingester
+from IngesterClass import Ingester, convert_utc_to_local
 
 from datetime import date
 from datetime import timedelta
@@ -122,10 +122,15 @@ class ReportSummaryIngester(Ingester):
                 reports_lsdb['ReportWeek'] = pd.to_datetime(reports_lsdb['ReportDate']).dt.isocalendar().week
                 reports = pd.merge(reports_lsdb[LSDB_COLS], reports_datahub[DATAHUB_COLS], on = 'ReportId', how = 'left')
             else:
-                reports['ReportYear'] = pd.to_datetime(reports['ReportDate']).dt.year
-                reports['ReportMonth'] = pd.to_datetime(reports['ReportDate']).dt.month
-                reports['ReportWeek'] = pd.to_datetime(reports['ReportDate']).dt.isocalendar().week
-                reports = reports_lsdb[LSDB_COLS]
+                reports = reports_lsdb.copy()
+                report_dates = pd.to_datetime(reports['ReportDate'], utc=True)
+                reports['ReportYear'] = report_dates.dt.year
+                reports['ReportMonth'] = report_dates.dt.month
+                reports['ReportWeek'] = report_dates.dt.isocalendar().week
+                reports['ReportDateLocal'] = convert_utc_to_local(
+                    report_dates, reports['TimeZone']
+                )
+                reports = reports[LSDB_COLS + ['ReportDateLocal', 'TimeZone']]
             # Add/update the LastUpdated column to the reports DataFrame as current timestamp
             reports['LastUpdated'] = datetime.now()
             self.data['output'] = reports

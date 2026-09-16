@@ -54,6 +54,7 @@ KPI_ReportSummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier', k
 KPI_ReportSummary.add_column(DBColumn('CustomerId', datatype='uniqueidentifier', key='foreign'))
 KPI_ReportSummary.add_column(DBColumn('ReportName', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('ReportDate', datatype='datetime'))
+KPI_ReportSummary.add_column(DBColumn('ReportDateLocal', datatype='datetime'))
 KPI_ReportSummary.add_column(DBColumn('ReportYear', datatype='int'))
 KPI_ReportSummary.add_column(DBColumn('ReportMonth', datatype='int'))
 KPI_ReportSummary.add_column(DBColumn('ReportWeek', datatype='int'))
@@ -73,6 +74,7 @@ KPI_ReportSummary.add_column(DBColumn('BoundarySubRegion', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('ReportArea', datatype='geometry'))
 KPI_ReportSummary.add_column(DBColumn('Labels', datatype='uniqueidentifier'))
 KPI_ReportSummary.add_column(DBColumn('Duplicated', datatype='nvarchar'))
+KPI_ReportSummary.add_column(DBColumn('TimeZone', datatype='nvarchar'))
 KPI_ReportSummary.add_column(DBColumn('LastUpdated', datatype='datetime'))
 
 #Peak SAT Location Table
@@ -149,13 +151,11 @@ KPI_EmissionSourceSummary.add_column(DBColumn('LastUpdated', datatype='datetime'
 
 
 # Survey Summary Table
+#Everything is in local time
 KPI_SurveySummary = KPITable('KPI_SurveySummary')
 KPI_SurveySummary.add_column(DBColumn('SurveyId', datatype='uniqueidentifier'))
 KPI_SurveySummary.add_column(DBColumn('ReportId', datatype='uniqueidentifier'))
 KPI_SurveySummary.add_column(DBColumn('SurveyorUnit', datatype='nvarchar'))
-KPI_SurveySummary.add_column(DBColumn('SurveyDurationMinutes', datatype='float'))
-KPI_SurveySummary.add_column(DBColumn('SurveyRawDurationMinutes', datatype='float'))
-KPI_SurveySummary.add_column(DBColumn('SegmentWeight', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('StartHour', datatype='int'))
 KPI_SurveySummary.add_column(DBColumn('StartTime', datatype='datetime'))
 KPI_SurveySummary.add_column(DBColumn('StartEpoch', datatype='bigint'))
@@ -163,6 +163,9 @@ KPI_SurveySummary.add_column(DBColumn('EndTime', datatype='datetime'))
 KPI_SurveySummary.add_column(DBColumn('EndEpoch', datatype='bigint'))
 KPI_SurveySummary.add_column(DBColumn('StartDay', datatype='date'))
 KPI_SurveySummary.add_column(DBColumn('EndDay', datatype='date'))
+KPI_SurveySummary.add_column(DBColumn('SurveyDurationMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('SurveyRawDurationMinutes', datatype='float'))
+KPI_SurveySummary.add_column(DBColumn('SegmentWeight', datatype='float'))
 KPI_SurveySummary.add_column(DBColumn('LateralRotation', datatype='nvarchar'))
 KPI_SurveySummary.add_column(DBColumn('NumberOfPeaks', datatype='int'))
 KPI_SurveySummary.add_column(DBColumn('DaySegments', datatype='int'))

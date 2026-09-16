@@ -20,7 +20,7 @@ from tables.IngesterTables import *
 from config import *
 from KPIHubConnection import *
 from query.bank import *
-from IngesterClass import Ingester
+from IngesterClass import Ingester, convert_utc_to_local
 
 from datetime import date
 from datetime import timedelta
@@ -147,7 +147,7 @@ class SurveySummaryIngester(Ingester):
         customer_db = self.customer_info['DBLocation']
         self.Logger.info(f"Processing customer: {customer_name}")
 
-        #Query the reports from KPI_EmissionSources
+        #Query the reports from KPI_SurveySummary
         query_kpi_survey_summary = f"""SELECT DISTINCT ReportId FROM KPI_SurveySummary WHERE ReportId IN (SELECT ReportId FROM KPI_ReportSummary WHERE CustomerId = '{self.customer_info['CustomerId']}')"""
         reports_kpi_survey_summary = Query(query = query_kpi_survey_summary).execute(KPIHub_Conn)
         num_reports_kpi_survey_summary = len(reports_kpi_survey_summary)
@@ -193,22 +193,27 @@ class SurveySummaryIngester(Ingester):
             reports_to_query = reports_into.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReport')
             reports_to_query.db.set_query(query_surveys_table(report_table="#TempReports"))
             surveys = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
-            surveys.db.set_query(query_segments_table(survey_table="#TempSurvey"))
+            surveys = pd.merge(surveys, reports_to_query[['ReportId', 'TimeZone']], on='ReportId', how='left')
             self.Logger.info(f"Reports from KPI_ReportSummary: {len(reports_to_query)}")
             self.Logger.info(f"Surveys from LSDB: {len(surveys)}")
             if len(surveys) == 0:
                 self.Logger.info(f"No surveys found, skipping")
                 self.check_flag = False
                 return
-            segments = surveys.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'SurveyId', temp_table_name = '#TempSurvey')
-            self.Logger.info(f"Segments from LSDB: {len(segments)}")
+ 
             # Set the starting time as a datetime object
-            surveys['StartHour'] = pd.to_datetime(surveys['StartEpoch'], unit='s').dt.hour
-            surveys['StartTime'] = pd.to_datetime(surveys['StartEpoch'], unit='s').dt.time
-            surveys['EndHour'] = pd.to_datetime(surveys['EndEpoch'], unit='s').dt.hour
-            surveys['EndTime'] = pd.to_datetime(surveys['EndEpoch'], unit='s').dt.time
-            surveys['StartDay'] = pd.to_datetime(surveys['StartEpoch'], unit='s').dt.date
-            surveys['EndDay'] = pd.to_datetime(surveys['EndEpoch'], unit='s').dt.date
+            surveys['StartTimeLocal'] = convert_utc_to_local(
+                surveys['StartEpoch'], surveys['TimeZone'], unit='s'
+            )
+            surveys['EndTimeLocal'] = convert_utc_to_local(
+                surveys['EndEpoch'], surveys['TimeZone'], unit='s'
+            )
+            surveys['StartHour'] = surveys['StartTimeLocal'].dt.hour
+            surveys['StartTime'] = surveys['StartTimeLocal'].dt.time
+            surveys['EndHour'] = surveys['EndTimeLocal'].dt.hour
+            surveys['EndTime'] = surveys['EndTimeLocal'].dt.time
+            surveys['StartDay'] = surveys['StartTimeLocal'].dt.day
+            surveys['EndDay'] = surveys['EndTimeLocal'].dt.day
 
             # Calculate the duration (in minutes) between StartEpoch and EndEpoch for each survey
             surveys['DurationMinutes'] = (
@@ -225,39 +230,41 @@ class SurveySummaryIngester(Ingester):
             )
             report_gdf = report_gdf.to_crs('EPSG:3857')
 
-            segments_gdf = gpd.GeoDataFrame(
-                segments,
-                geometry=gpd.GeoSeries.from_wkt(segments['Shape']),
-                crs="EPSG:4326"
-            )
-            segments_gdf = segments_gdf.to_crs('EPSG:3857')
-        
+      
             survey_summary = surveys.apply(survey_summary_apply, axis=1)
-            outputs =  []
+            outputs =  []   
             self.data['reports_gdf'] = report_gdf
-            self.data['segments_gdf'] = segments_gdf
-            self.data['survey_gdf'] = surveys
+            self.data['surveys'] = surveys
             for idx, row in report_gdf.iterrows():
                 self.Logger.File.info(f"Processing report {row['ReportId']}, {idx+1} of {len(report_gdf)}")
-                surveys_subset = surveys[surveys['ReportId'] == row['ReportId']]['SurveyId']
-                segments_subset = segments_gdf[segments_gdf['SurveyId'].isin(surveys_subset)]
-                segments_subset = segments_subset.to_crs('EPSG:3857')
+                surveys_subset = surveys[surveys['ReportId'] == row['ReportId']][['SurveyId']].copy()
+                surveys_subset.db.set_query(query_segments_table(survey_table="#TempSurvey"))
+                segments = surveys_subset.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'SurveyId', temp_table_name = '#TempSurvey')
+                segments_gdf = gpd.GeoDataFrame(
+                    segments,
+                    geometry=gpd.GeoSeries.from_wkt(segments['Shape']),
+                    crs="EPSG:4326"
+                )
+                segments_gdf = segments_gdf.to_crs('EPSG:3857')
+
                 segments_in_report = gpd.overlay(
-                    segments_subset,
-                    gpd.GeoDataFrame([row], geometry=[row['geometry']], crs=segments_subset.crs),
+                    segments_gdf,
+                    gpd.GeoDataFrame([row], geometry=[row['geometry']], crs=report_gdf.crs),
                     how='intersection',
                     keep_geom_type=False
                 )
-
                 if segments_in_report.empty:
                     continue  # skip if intersection is empty
                 self.data['segments_in_report'] = segments_in_report
+                segments_in_report = _allocate_clipped_segment_metrics(segments_in_report)
                 # Convert StartEpoch to datetime (time only, no date)
-                segments_in_report['StartTime'] = pd.to_datetime(segments_in_report['StartEpoch'], unit='s').dt.time
-                segments_in_report['StartDate'] = pd.to_datetime(segments_in_report['StartEpoch'], unit='s')
+                segments_in_report['StartTimeLocal'] = convert_utc_to_local(
+                    segments_in_report['StartEpoch'], row['TimeZone'], unit='s'
+                )
+                segments_in_report['StartTime'] = segments_in_report['StartTimeLocal'].dt.time
+                segments_in_report['StartDate'] = segments_in_report['StartTimeLocal'].dt.date
                 segments_in_report['DayNight'] = segments_in_report['StartTime'].apply(lambda t: get_day_night(t, SUNRISE_TIME, SUNSET_TIME))
                 segments_in_report['ActiveIdle'] = segments_in_report['CarSpeedMedian'].apply(lambda x: set_actie_idle(x, SPEED_THRESHOLD))
-
                 # Group by SurveyId and calculate the aggregated metrics per SurveyId (for surveys associated with this report)
                 segment_grouped = segments_in_report.groupby('SurveyId')
 
@@ -269,13 +276,13 @@ class SurveySummaryIngester(Ingester):
                         'NightSegments': (group['DayNight'] == 'Night').sum(),
                         'ActiveSegments': (group['ActiveIdle'] == 'Active').sum(),
                         'IdleSegments': (group['ActiveIdle'] == 'Idle').sum(),
-                        'TotalSegments': len(group),
-                        'TotalKilometers': group['LengthMeters'].sum() / 1000,
-                        'DayKilometers': group.loc[group['DayNight'] == 'Day', 'LengthMeters'].sum() / 1000,
-                        'NightKilometers': group.loc[group['DayNight'] == 'Night', 'LengthMeters'].sum() / 1000,
-                        'SegmentDurationMinutes': group['DurationSeconds'].sum() / 60,
-                        'IdleTimeMinutes': group.loc[group['ActiveIdle'] == 'Idle', 'DurationSeconds'].sum() / 60,
-                        'ActiveTimeMinutes': group.loc[group['ActiveIdle'] == 'Active', 'DurationSeconds'].sum() / 60,
+                        'TotalSegments': group['Id'].nunique(),
+                        'TotalKilometers': group['AllocatedLengthMeters'].sum() / 1000,
+                        'DayKilometers': group.loc[group['DayNight'] == 'Day', 'AllocatedLengthMeters'].sum() / 1000,
+                        'NightKilometers': group.loc[group['DayNight'] == 'Night', 'AllocatedLengthMeters'].sum() / 1000,
+                        'SegmentDurationMinutes': group['AllocatedDurationSeconds'].sum() / 60,
+                        'IdleTimeMinutes': group.loc[group['ActiveIdle'] == 'Idle', 'AllocatedDurationSeconds'].sum() / 60,
+                        'ActiveTimeMinutes': group.loc[group['ActiveIdle'] == 'Active', 'AllocatedDurationSeconds'].sum() / 60,
                         'AvgSpeedKm': 3.6 * group['CarSpeedMedian'].mean(),
                     }
                     outputs.append(output)
@@ -294,8 +301,13 @@ class SurveySummaryIngester(Ingester):
                 right_on=["SurveyId", "ReportId"],
                 how="inner"
             )
-            merged_df['SegmentWeight'] = merged_df['TotalSegments'] / merged_df['TotalSegmentsInSurvey']
-            merged_df['SurveyDurationMinutes'] = merged_df['SurveyRawDurationMinutes'] * merged_df['SegmentWeight']
+            survey_clipped_duration = merged_df.groupby('SurveyId')['SegmentDurationMinutes'].transform('sum')
+            merged_df['SegmentWeight'] = (
+                merged_df['SegmentDurationMinutes'] / survey_clipped_duration
+            ).fillna(0)
+            merged_df['SurveyDurationMinutes'] = (
+                merged_df['SurveyRawDurationMinutes'] * merged_df['SegmentWeight']
+            )
             self.data['output'] = merged_df
             self.data['output']['LastUpdated'] = datetime.now()
         
@@ -329,6 +341,21 @@ def set_actie_idle(speed, speed_threshold):
     else:
         return 'Active'
 
+
+def _allocate_clipped_segment_metrics(segments_in_report):
+    """Scale segment duration/length by clipped geometry so boundary splits do not double-count."""
+    segments_in_report = segments_in_report.copy()
+    clipped_length = segments_in_report.geometry.length
+    orig_length = segments_in_report['LengthMeters'].replace(0, pd.NA)
+    length_ratio = (clipped_length / orig_length).fillna(0).clip(0, 1)
+    segments_in_report['AllocatedDurationSeconds'] = (
+        segments_in_report['DurationSeconds'] * length_ratio
+    )
+    segments_in_report['AllocatedLengthMeters'] = (
+        segments_in_report['LengthMeters'] * length_ratio
+    )
+    return segments_in_report
+
 def segment_summary_apply(df):
     return pd.Series({
         'DaySegments': (df['DayNight'] == 'Day').sum(),
@@ -351,7 +378,7 @@ def survey_summary_apply(row):
         'SurveyId': row['SurveyId'],
         'SurveyorUnit': row['SurveyorUnit'],
         'SurveyRawDurationMinutes': row['DurationMinutes'],
-        'SurveyDurationMinutes': row['DurationMinutes'],
+        #'SurveyDurationMinutes': row['DurationMinutes'],
         'ReportId': row['ReportId'],
         'StartHour': row['StartHour'],
         'StartTime': row['StartTime'],
