@@ -67,7 +67,7 @@ def add_peak_sat_file_id(customer_name, file_id, Conn):
         data['LastUpdated'] = datetime.now()
         KPI_PeakSATLocation.update_table(arguments = {'DataFrame': data, 'db_path': DB_PATH, 'PrimaryKey': ['CustomerId']})
 
-def add_customer(customer_name, Conn, active = True, country = None):
+def add_customer(customer_name, Conn, active = False, country = None):
     result = Query(query = f"SELECT C.Id, C.Name FROM Customer C WHERE LOWER(C.Name) = LOWER('{customer_name}')").execute(Conn)
     if result.empty:
         raise ValueError(f"Customer {customer_name} not found")

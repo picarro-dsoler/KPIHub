@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(directory, ".."))
+_root = os.path.abspath(os.path.join(directory, "..", "..", "..", ".."))
 
 # Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
 sys.path.insert(0, _root)

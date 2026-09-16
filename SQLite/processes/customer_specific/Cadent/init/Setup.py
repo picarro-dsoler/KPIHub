@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 
 directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(directory, ".."))
+_root = os.path.abspath(os.path.join(directory, "..", "..", "..", ".."))
 
 # Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
 sys.path.insert(0, _root)
@@ -21,8 +21,10 @@ from lib.KPIHubConnection import *
 
 
 #Create DB
-db_path = os.path.abspath(os.path.join(directory, "..", DB_PATH))
-
+db_path = os.path.abspath(os.path.join(_root, DB_PATH))
+print(directory)
+print(_root)
+print(db_path)
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
@@ -40,10 +42,11 @@ KPI_Customer.reinit_table(arguments={'db_path': DB_PATH})
 KPI_Country.reinit_table(arguments={'db_path': DB_PATH})
 #POR Table
 KPI_POR.reinit_table(arguments={'db_path': DB_PATH, 'pair_key': ['CustomerId', 'Year']})
-
+#Peak SAT Location Table
+KPI_PeakSATLocation.reinit_table(arguments={'db_path': DB_PATH})
 #SAT Tables
 KPI_PeakAboveSAT.reinit_table(arguments={'db_path': DB_PATH})
-KPI_PeakSATLocation.reinit_table(arguments={'db_path': DB_PATH})
+
 
 #Summary Tables
 KPI_SurveySummary.reinit_table(arguments = {'db_path': DB_PATH, 'pair_key': ['SurveyId', 'ReportId']})

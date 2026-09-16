@@ -3,6 +3,7 @@ import sys
 
 directory = os.path.abspath(os.path.dirname(__file__))
 _root = os.path.abspath(os.path.join(directory, "..", ".."))
+KPIHUB_ROOT = os.path.abspath(os.path.join(directory, "..", ".."))
 
 # Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
 sys.path.insert(0, _root)
@@ -51,6 +52,7 @@ class PeakSATIngester(Ingester):
             self.Logger.info(f"No data found in KPI_PeakAboveSAT for customer: {self.customer_info['Name']}")
             self.check_flag = True
             self.data['Box'] = df
+        
         elif len(df_db) != len(df):
             self.Logger.info(f"Data mismatch in KPI_PeakAboveSAT for customer: {self.customer_info['Name']}")
             self.Logger.info(f"Number of rows in KPI_PeakAboveSAT: {len(df_db)}")
@@ -67,14 +69,23 @@ class PeakSATIngester(Ingester):
         self.Logger.info(f"Querying data for customer: {self.customer_info['Name']}")
         if self.check_flag:
             self.data['Box']['CustomerId'] = self.customer_info['CustomerId']
+            self.data['Box']['Date'] = pd.to_datetime(self.data['Box']['Date'])
+            self.data['Box']['WeekNumber'] = self.data['Box']['Date'].dt.isocalendar().week
             self.data['Box']['ReportYear'] = self.data['Box']['Date'].dt.year
             self.data['Box']['LastUpdated'] = datetime.now()
+            self.data['Box'].drop(columns = ['CustomerName'], inplace = True)
             self.data['Box'].rename(columns = {'Region': 'BoundaryRegion'}, inplace = True)
+            self.data['Box'].rename(columns = {'Plant': 'BoundaryPlant'}, inplace = True)
+            self.data['Box'].rename(columns = {'SubRegion': 'BoundarySubRegion'}, inplace = True)
             self.data['output'] = self.data['Box']
 
     def push_data(self):
-        super().push_data(primary_key = ['PeakId'])
-        self.Logger.info(f"Data pushed to {db_path}")
+        db_path = os.path.join(KPIHUB_ROOT, DB_PATH)
+        if self.check_flag:
+            self.table.update_table(arguments = {'db_path': db_path, 'DataFrame': self.data['output'], 'PrimaryKey': 'PeakId'})
+            self.Logger.info(f"Data pushed to {db_path}")
+        else:
+            self.Logger.info(f"No data to push")
 
     def sanity_check(self):
         df_kpi = Query(query = f"SELECT * FROM KPI_PeakAboveSAT WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
@@ -82,6 +93,9 @@ class PeakSATIngester(Ingester):
 
 if __name__ == "__main__":
     customer_list = get_customer_list(KPIHub_Conn)
+    customer_list = customer_list[customer_list['Name'] == 'Cadent'].reset_index(drop=True)
+    print(customer_list)
+
     arguments = {'conn': KPIHub_Conn}
     peakSATIngester = PeakSATIngester(arguments)
     peakSATIngester.set_customer_info(customer_list.iloc[0])

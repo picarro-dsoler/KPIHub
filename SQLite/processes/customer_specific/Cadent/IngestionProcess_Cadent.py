@@ -3,7 +3,7 @@ import sys
 
 # Add the KPIHub directory to sys.path so all local packages resolve
 directory = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(directory, "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(directory, "..", "..", "..")))
 
 from locallib.picarrodb import *
 from locallib.slack import *
@@ -12,7 +12,7 @@ from locallib.etl import Loggers
 #Ingester Processes
 from lib.ingester.ReportSummaryIngester import ReportSummaryIngester
 from lib.ingester.ReportSummaryIngester import ReportSummaryListIngester
-from lib.ingester.SurveySummaryIngester import SurveySummaryIngester
+from lib.ingester.SurveySummaryIngester import SurveySummaryIngesterDuplicates
 from lib.ingester.EmissionSourceSummaryIngester import EmissionSourceSummaryIngester
 from lib.ingester.PeakSATIngester import PeakSATIngester
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         reportIngester.delete_data()
         reportIngester.sanity_check()
 
-        surveyIngester = SurveySummaryIngester(arguments)
+        surveyIngester = SurveySummaryIngesterDuplicates(arguments)
         surveyIngester.set_customer_info(customer)
         surveyIngester.update_check()
         surveyIngester.query_data()
@@ -57,10 +57,10 @@ if __name__ == "__main__":
         emissionSourceIngester.delete_data()
         emissionSourceIngester.sanity_check()
 
-        #if customer['Name'] == 'Cadent':
-        #    peakSATIngester = PeakSATIngester(arguments)
-        #    peakSATIngester.set_customer_info(customer)
-        #    peakSATIngester.update_check()
-        #    peakSATIngester.query_data()
-        #    peakSATIngester.push_data()
-        #    peakSATIngester.sanity_check()
+        if customer['Name'] == 'Cadent':
+            peakSATIngester = PeakSATIngester(arguments)
+            peakSATIngester.set_customer_info(customer)
+            peakSATIngester.update_check()
+            peakSATIngester.query_data()
+            peakSATIngester.push_data()
+            peakSATIngester.sanity_check()

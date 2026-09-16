@@ -2,7 +2,7 @@ import os
 import sys
 
 init_directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(init_directory, ".."))
+_root = os.path.abspath(os.path.join(init_directory, "..","..",".."))
 
 # Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
 sys.path.insert(0, _root)

@@ -29,7 +29,7 @@ class KPISummary:
         self.period_dict = period_dict
         self.data = {}
         self.tableList = []
-        self.aggregator_dict = {**self.base_time, **aggregator, **period_dict}
+        self.aggregator_dict = {**self.base_time, **period_dict, **aggregator}
         self.aggregator = list(self.aggregator_dict.values())
         self.customer_name = customer_name
 
@@ -58,7 +58,7 @@ class KPISummary:
         if self.tableList:
             self.data['output'] = temp_data.groupby(self.aggregator).apply(self.processor)
             self.data['output'] = self.data['output'].round(2)
- 
+        #Melter prepares the data to upload into KPI_Data
         self.melter()
 
 
