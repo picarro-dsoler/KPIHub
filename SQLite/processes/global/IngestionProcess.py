@@ -27,7 +27,6 @@ if __name__ == "__main__":
     #file_list = {'ITALGAS': 2360359055921, 'Toscana Energia': 2362382199609}
     file_list = {}
     customer_list = get_customer_list(KPIHub_Conn)
-    customer_list = customer_list[customer_list['Name'] != 'Cadent']
     arguments = {'conn': KPIHub_Conn}
     for _,customer in customer_list.iterrows():
         if customer['Active'] == 0:
@@ -59,10 +58,10 @@ if __name__ == "__main__":
         emissionSourceIngester.delete_data()
         emissionSourceIngester.sanity_check()
 
-        #if customer['Name'] == 'Cadent':
-        #    peakSATIngester = PeakSATIngester(arguments)
-        #    peakSATIngester.set_customer_info(customer)
-        #    peakSATIngester.update_check()
-        #    peakSATIngester.query_data()
-        #    peakSATIngester.push_data()
-        #    peakSATIngester.sanity_check()
+        if customer['Name'] == 'Cadent':
+            peakSATIngester = PeakSATIngester(arguments)
+            peakSATIngester.set_customer_info(customer)
+            peakSATIngester.update_check()
+            peakSATIngester.query_data()
+            peakSATIngester.push_data()
+            peakSATIngester.sanity_check()

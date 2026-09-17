@@ -92,6 +92,6 @@ for _, row in customer_df.iterrows():
     db_location = row["DBLocation"]
     country = row["Country"] if pd.notna(row["Country"]) else None
     conn = EU1_Conn if db_location == "EU1" else EU2_Conn
-    add_customer(customer_name, conn, country=country, active=True)
+    add_customer(customer_name, conn, country=country, active=False)
 
 print(DB_PATH)

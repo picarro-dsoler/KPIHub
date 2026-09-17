@@ -245,6 +245,7 @@ class SurveySummaryIngester(Ingester):
 
       
             survey_summary = surveys.apply(survey_summary_apply, axis=1)
+            survey_total_km = {}
             outputs =  []   
             self.data['reports_gdf'] = report_gdf
             self.data['surveys'] = surveys
@@ -253,6 +254,9 @@ class SurveySummaryIngester(Ingester):
                 surveys_subset = surveys[surveys['ReportId'] == row['ReportId']][['SurveyId']].copy()
                 surveys_subset.db.set_query(query_segments_table(survey_table="#TempSurvey"))
                 segments = surveys_subset.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'SurveyId', temp_table_name = '#TempSurvey')
+                for survey_id, group in segments.groupby('SurveyId'):
+                    if survey_id not in survey_total_km:
+                        survey_total_km[survey_id] = group['LengthMeters'].sum() / 1000
                 segments_gdf = gpd.GeoDataFrame(
                     segments,
                     geometry=gpd.GeoSeries.from_wkt(segments['Shape']),
@@ -319,10 +323,11 @@ class SurveySummaryIngester(Ingester):
                 right_on=["SurveyId", "ReportId"],
                 how="inner"
             )
-            survey_clipped_duration = merged_df.groupby('SurveyId')['SegmentDurationMinutes'].transform('sum')
+            merged_df['SurveyTotalKilometers'] = merged_df['SurveyId'].map(survey_total_km)
+            survey_total_km_col = merged_df['SurveyTotalKilometers'].replace(0, pd.NA)
             merged_df['SegmentWeight'] = (
-                merged_df['SegmentDurationMinutes'] / survey_clipped_duration
-            ).fillna(0)
+                merged_df['TotalKilometers'] / survey_total_km_col
+            ).fillna(0).clip(0, 1)
             merged_df['SurveyDurationMinutes'] = (
                 merged_df['SurveyRawDurationMinutes'] * merged_df['SegmentWeight']
             )
