@@ -1,11 +1,10 @@
 import os
 import sys
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from bootstrap_paths import activate
 
-# Get the absolute path of the current file's directory
-directory = os.path.abspath(os.path.dirname(__file__))
-# Just add the parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(directory, "..","..")))
+activate()
 
 from locallib.picarrodb import *
 from locallib.slack import *

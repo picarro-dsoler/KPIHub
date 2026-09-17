@@ -200,20 +200,33 @@ class SurveySummaryIngester(Ingester):
                 self.Logger.info(f"No surveys found, skipping")
                 self.check_flag = False
                 return
- 
+
+            valid_epochs = surveys["StartEpoch"].notna() & surveys["EndEpoch"].notna()
+            if not valid_epochs.all():
+                dropped = (~valid_epochs).sum()
+                self.Logger.info(f"Dropping {dropped} surveys with missing StartEpoch/EndEpoch")
+                surveys = surveys.loc[valid_epochs].copy()
+            if surveys.empty:
+                self.Logger.info("No surveys with valid epoch values, skipping")
+                self.check_flag = False
+                return
+
+            if "TimeZone" not in surveys.columns:
+                surveys["TimeZone"] = pd.NA
+
             # Set the starting time as a datetime object
-            surveys['StartTimeLocal'] = convert_utc_to_local(
-                surveys['StartEpoch'], surveys['TimeZone'], unit='s'
+            surveys["StartTimeLocal"] = convert_utc_to_local(
+                surveys["StartEpoch"], surveys["TimeZone"], unit="s"
             )
-            surveys['EndTimeLocal'] = convert_utc_to_local(
-                surveys['EndEpoch'], surveys['TimeZone'], unit='s'
+            surveys["EndTimeLocal"] = convert_utc_to_local(
+                surveys["EndEpoch"], surveys["TimeZone"], unit="s"
             )
-            surveys['StartHour'] = surveys['StartTimeLocal'].dt.hour
-            surveys['StartTime'] = surveys['StartTimeLocal'].dt.time
-            surveys['EndHour'] = surveys['EndTimeLocal'].dt.hour
-            surveys['EndTime'] = surveys['EndTimeLocal'].dt.time
-            surveys['StartDay'] = surveys['StartTimeLocal'].dt.day
-            surveys['EndDay'] = surveys['EndTimeLocal'].dt.day
+            surveys["StartHour"] = surveys["StartTimeLocal"].dt.hour
+            surveys["StartTime"] = surveys["StartTimeLocal"].dt.time
+            surveys["EndHour"] = surveys["EndTimeLocal"].dt.hour
+            surveys["EndTime"] = surveys["EndTimeLocal"].dt.time
+            surveys["StartDay"] = surveys["StartTimeLocal"].dt.day
+            surveys["EndDay"] = surveys["EndTimeLocal"].dt.day
 
             # Calculate the duration (in minutes) between StartEpoch and EndEpoch for each survey
             surveys['DurationMinutes'] = (
@@ -258,11 +271,16 @@ class SurveySummaryIngester(Ingester):
                 self.data['segments_in_report'] = segments_in_report
                 segments_in_report = _allocate_clipped_segment_metrics(segments_in_report)
                 # Convert StartEpoch to datetime (time only, no date)
-                segments_in_report['StartTimeLocal'] = convert_utc_to_local(
-                    segments_in_report['StartEpoch'], row['TimeZone'], unit='s'
+                segment_epochs = segments_in_report["StartEpoch"].notna()
+                if not segment_epochs.all():
+                    segments_in_report = segments_in_report.loc[segment_epochs].copy()
+                if segments_in_report.empty:
+                    continue
+                segments_in_report["StartTimeLocal"] = convert_utc_to_local(
+                    segments_in_report["StartEpoch"], row["TimeZone"], unit="s"
                 )
-                segments_in_report['StartTime'] = segments_in_report['StartTimeLocal'].dt.time
-                segments_in_report['StartDate'] = segments_in_report['StartTimeLocal'].dt.date
+                segments_in_report["StartTime"] = segments_in_report["StartTimeLocal"].dt.time
+                segments_in_report["StartDate"] = segments_in_report["StartTimeLocal"].dt.date
                 segments_in_report['DayNight'] = segments_in_report['StartTime'].apply(lambda t: get_day_night(t, SUNRISE_TIME, SUNSET_TIME))
                 segments_in_report['ActiveIdle'] = segments_in_report['CarSpeedMedian'].apply(lambda x: set_actie_idle(x, SPEED_THRESHOLD))
                 # Group by SurveyId and calculate the aggregated metrics per SurveyId (for surveys associated with this report)
