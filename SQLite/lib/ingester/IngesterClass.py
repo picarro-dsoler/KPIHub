@@ -36,18 +36,26 @@ def convert_utc_to_local(timestamps, timezones, unit=None):
     pandas dt.tz_convert() only accepts a single timezone, not a Series.
     LSDB stores Windows timezone names (e.g. 'Central European Standard Time').
     """
-    utc = pd.to_datetime(timestamps, unit=unit, utc=True)
+    utc = pd.to_datetime(timestamps, unit=unit, utc=True, errors="coerce")
     if not isinstance(timezones, pd.Series):
         timezones = pd.Series(timezones, index=utc.index)
-    return pd.Series(
-        [
-            timestamp.tz_convert(_resolve_timezone(tz))
-            if pd.notna(tz) and _resolve_timezone(tz) is not None
-            else timestamp
-            for timestamp, tz in zip(utc, timezones)
-        ],
-        index=utc.index,
-    )
+
+    local_times = []
+    for timestamp, tz in zip(utc, timezones):
+        if pd.isna(timestamp):
+            local_times.append(pd.NaT)
+            continue
+        iana_tz = _resolve_timezone(tz)
+        if iana_tz is not None:
+            try:
+                local_times.append(timestamp.tz_convert(iana_tz))
+            except Exception:
+                local_times.append(timestamp)
+        else:
+            local_times.append(timestamp)
+
+    # Coerce to datetimelike so downstream .dt accessors work (object dtype breaks .dt).
+    return pd.to_datetime(pd.Series(local_times, index=utc.index), errors="coerce")
 
 
 #Class used to get any data inside the data KPI HUb database
@@ -70,9 +78,9 @@ class Ingester:
         file_handler.setFormatter(formatter)
         Logger.File.addHandler(file_handler)
 
-        slack_handler = logging.StreamHandler(SlackWriter(channel = 'C0B9PGDNHH7'))
+        #slack_handler = logging.StreamHandler(SlackWriter(channel = 'C0B9PGDNHH7'))
 
-        Logger.Slack.addHandler(slack_handler)
+        #Logger.Slack.addHandler(slack_handler)
         self.Logger = Logger
         self.arguments = arguments
         self.Logger.info("="*100)

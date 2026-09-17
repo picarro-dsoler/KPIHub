@@ -1,9 +1,10 @@
 import os
 import sys
 
-# Add the KPIHub directory to sys.path so all local packages resolve
-directory = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(directory, "..","..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from bootstrap_paths import activate
+
+activate()
 
 from locallib.picarrodb import *
 from locallib.slack import *

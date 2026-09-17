@@ -1,12 +1,10 @@
 import os
 import sys
 
-init_directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(init_directory, "..","..",".."))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from bootstrap_paths import activate
 
-# Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
-sys.path.insert(0, _root)
-os.chdir(_root)
+activate()
 
 from lib.handlers.CustomerHandler import add_peak_sat_file_id
 from lib.config import DB_PATH

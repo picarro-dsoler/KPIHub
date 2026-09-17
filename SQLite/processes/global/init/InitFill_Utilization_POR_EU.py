@@ -1,12 +1,13 @@
 import os
 import sys
+from datetime import datetime
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from bootstrap_paths import activate
+
+activate()
 
 init_directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(init_directory, "..","..",".."))
-
-# Add KPIHub root to sys.path so `lib.*` imports resolve regardless of cwd.
-sys.path.insert(0, _root)
-os.chdir(_root)
 
 import pandas as pd
 

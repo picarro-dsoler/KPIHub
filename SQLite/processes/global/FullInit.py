@@ -2,12 +2,13 @@ import os
 import subprocess
 import sys
 
-directory = os.path.abspath(os.path.dirname(__file__))
-_root = os.path.abspath(os.path.join(directory))
-init_directory = os.path.join(_root, "init")
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from bootstrap_paths import activate
 
-sys.path.insert(0, _root)
-os.chdir(_root)
+activate()
+
+directory = os.path.abspath(os.path.dirname(__file__))
+init_directory = os.path.join(directory, "init")
 
 PROCESSES = [
     "Setup.py",
