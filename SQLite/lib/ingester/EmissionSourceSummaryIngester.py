@@ -82,7 +82,15 @@ class EmissionSourceSummaryIngester(Ingester):
             reports_to_query = self.data['reports_into'].copy()
             reports_to_query.db.set_query(query_emission_sources_table(report_table = '#TempReports'))
             emission_sources = reports_to_query.db.execute(CONN_DICT[self.customer_info['DBLocation']], source_col = 'ReportId', temp_table_name = '#TempReports')
-            emissions_summary = emission_sources.groupby("ReportId").apply(summarize_emission).reset_index()
+            if emission_sources.empty:
+                self.Logger.info("No emission sources found, filling zeros for pending reports")
+                emissions_summary = pd.DataFrame(columns=["ReportId"])
+            else:
+                emissions_summary = (
+                    emission_sources.groupby("ReportId")
+                    .apply(summarize_emission, include_groups=False)
+                    .reset_index()
+                )
             # Merge with reports_to_query to fill zeros for missing emission records per report
             merged_reports = reports_to_query[['ReportId']].merge(emissions_summary, on="ReportId", how="left")
             merged_reports.fillna(0, inplace=True)
@@ -102,7 +110,7 @@ class EmissionSourceSummaryIngester(Ingester):
 def summarize_emission(group):
     # Remove all the rows in the group where Disposition == 2
     forCounts = group[group["Disposition"] != 2]
-    forPCChecks = group[group["IsFiltered"] == 0 & (group["Disposition"] != 2)]
+    forPCChecks = group[(group["IsFiltered"] == 0) & (group["Disposition"] != 2)]
     forShares = group
     return pd.Series({
         "EmissionRate": forCounts["EmissionRate"].sum(),

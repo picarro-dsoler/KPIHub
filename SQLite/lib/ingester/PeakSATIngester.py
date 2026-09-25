@@ -34,11 +34,12 @@ class PeakSATIngester(Ingester):
     
         #Get the data from box
         data = Query(query = f"SELECT * FROM KPI_PeakSATLocation WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
-        box_file_id = data.iloc[0]['BoxFileId']
-        if box_file_id is None:
-            self.Logger.info(f"No data found in KPI_PeakSATLocation for customer: {self.customer_info['Name']}")
-            self.check_flag = True
+        if data.empty or not data.iloc[0].get('BoxFileId'):
+            self.Logger.info(f"No BoxFileId found in KPI_PeakSATLocation for customer: {self.customer_info['Name']}")
+            self.check_flag = False
             return
+        box_file_id = data.iloc[0]['BoxFileId']
+   
         
         box_obj = BoxFile(local_path='temp.xlsx', box_file_id =box_file_id)
         box_obj.download()
@@ -88,8 +89,11 @@ class PeakSATIngester(Ingester):
             self.Logger.info(f"No data to push")
 
     def sanity_check(self):
-        df_kpi = Query(query = f"SELECT * FROM KPI_PeakAboveSAT WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
-        self.Logger.info(f"Total number of peaks from KPI_PeakAboveSAT: {len(df_kpi)}")
+        if self.check_flag:
+            df_kpi = Query(query = f"SELECT * FROM KPI_PeakAboveSAT WHERE CustomerId = '{self.customer_info['CustomerId']}'").execute(KPIHub_Conn)
+            self.Logger.info(f"Total number of peaks from KPI_PeakAboveSAT: {len(df_kpi)}")
+        else:
+            self.Logger.info(f"No data to sanity check")
 
 if __name__ == "__main__":
     customer_list = get_customer_list(KPIHub_Conn)

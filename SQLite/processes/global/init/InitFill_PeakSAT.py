@@ -11,5 +11,6 @@ from lib.config import DB_PATH
 from lib.KPIHubConnection import KPIHub_Conn
 
 add_peak_sat_file_id("Cadent", 2206415797785, KPIHub_Conn)
+add_peak_sat_file_id("SGN", 2482855861926, KPIHub_Conn)
 
 print(f"Updated Peak SAT location for Cadent in {DB_PATH}")

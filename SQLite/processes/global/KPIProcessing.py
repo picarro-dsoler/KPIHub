@@ -35,11 +35,8 @@ if __name__ == "__main__":
         emissionSourceKPI = KPIEmissionSource(customer_name)
         surveyKPI = KPISurveySummary(customer_name)
         POR_KPI = KPIPOR(customer_name)
-        if customer['Name'] == 'Cadent':
-            peakSATKPI = KPIPeakSAT(customer_name)
-            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI, POR_KPI]
-        else:
-            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, POR_KPI]
+        peakSATKPI = KPIPeakSAT(customer_name)
+        KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI, POR_KPI]
         try:
             for KPI in KPI_List:
                 print(KPI.name)
@@ -58,11 +55,8 @@ if __name__ == "__main__":
             reportKPI = KPIReport(customer_name, aggregator)
             emissionSourceKPI = KPIEmissionSource(customer_name, aggregator)
             surveyKPI = KPISurveySummary(customer_name, aggregator)
-            if customer['Name'] == 'Cadent':
-                peakSATKPI = KPIPeakSAT(customer_name, aggregator)
-                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
-            else:
-                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI]
+            peakSATKPI = KPIPeakSAT(customer_name, aggregator)
+            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
             for KPI in KPI_List:
                 print(KPI.name)
                 KPI.query_table()
@@ -99,11 +93,8 @@ if __name__ == "__main__":
             reportKPI = KPIReport(customer_name, aggregator, period_dict={})
             emissionSourceKPI = KPIEmissionSource(customer_name, aggregator, period_dict={})
             surveyKPI = KPISurveySummary(customer_name, aggregator, period_dict={})
-            if customer['Name'] == 'Cadent':
-                peakSATKPI = KPIPeakSAT(customer_name, aggregator, period_dict={})
-                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
-            else:
-                KPI_List = [reportKPI, emissionSourceKPI, surveyKPI]
+            peakSATKPI = KPIPeakSAT(customer_name, aggregator, period_dict={})
+            KPI_List = [reportKPI, emissionSourceKPI, surveyKPI, peakSATKPI]
             for KPI in KPI_List:
                 print(KPI.name)
                 KPI.query_table()

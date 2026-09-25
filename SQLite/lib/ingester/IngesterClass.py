@@ -78,9 +78,9 @@ class Ingester:
         file_handler.setFormatter(formatter)
         Logger.File.addHandler(file_handler)
 
-        #slack_handler = logging.StreamHandler(SlackWriter(channel = 'C0B9PGDNHH7'))
+        slack_handler = logging.StreamHandler(SlackWriter(channel = 'C0B9PGDNHH7'))
 
-        #Logger.Slack.addHandler(slack_handler)
+        Logger.Slack.addHandler(slack_handler)
         self.Logger = Logger
         self.arguments = arguments
         self.Logger.info("="*100)
