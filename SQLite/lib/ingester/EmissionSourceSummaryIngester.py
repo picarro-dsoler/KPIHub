@@ -88,7 +88,7 @@ class EmissionSourceSummaryIngester(Ingester):
             else:
                 emissions_summary = (
                     emission_sources.groupby("ReportId")
-                    .apply(summarize_emission, include_groups=False)
+                    .apply(summarize_emission)
                     .reset_index()
                 )
             # Merge with reports_to_query to fill zeros for missing emission records per report
