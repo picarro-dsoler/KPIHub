@@ -58,10 +58,9 @@ if __name__ == "__main__":
         emissionSourceIngester.delete_data()
         emissionSourceIngester.sanity_check()
 
-        if customer['Name'] == 'Cadent':
-            peakSATIngester = PeakSATIngester(arguments)
-            peakSATIngester.set_customer_info(customer)
-            peakSATIngester.update_check()
-            peakSATIngester.query_data()
-            peakSATIngester.push_data()
-            peakSATIngester.sanity_check()
+        peakSATIngester = PeakSATIngester(arguments)
+        peakSATIngester.set_customer_info(customer)
+        peakSATIngester.update_check()
+        peakSATIngester.query_data()
+        peakSATIngester.push_data()
+        peakSATIngester.sanity_check()
