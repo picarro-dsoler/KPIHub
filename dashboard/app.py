@@ -33,6 +33,12 @@ from weekly_kpi import (
 
 PORT = int(os.environ.get("KPIHUB_DASH_PORT", "8052"))
 
+
+def _sorted_dropdown_options(options: list[dict], *, label_key: str = "label") -> list[dict]:
+    """Dash dropdown options ordered A→Z by visible label."""
+    return sorted(options, key=lambda o: str(o.get(label_key, "")).casefold())
+
+
 dash_app = dash.Dash(__name__, suppress_callback_exceptions=True, title="KPIHub Weekly KPI")
 server = dash_app.server
 
@@ -42,9 +48,12 @@ try:
     _customers = list_customers()
     if _customers.empty:
         raise RuntimeError("No active customers in KPI_Customer (check DB / Active flag).")
-    _customer_options = [
-        {"label": str(r["Name"]), "value": str(r["Name"])} for _, r in _customers.iterrows()
-    ]
+    _customer_options = _sorted_dropdown_options(
+        [
+            {"label": str(r["Name"]), "value": str(r["Name"])}
+            for _, r in _customers.iterrows()
+        ]
+    )
     _default_customer = _customer_options[0]["value"] if _customer_options else None
     _db_ok = True
 except Exception as exc:  # noqa: BLE001 — show wiring error in UI
@@ -349,7 +358,9 @@ dash_app.layout = html.Div(
                         html.Label("Year", style={"fontWeight": 600}),
                         dcc.Dropdown(
                             id="year",
-                            options=[{"label": str(y), "value": y} for y in range(_default_year - 2, _default_year + 2)],
+                            options=_sorted_dropdown_options(
+                                [{"label": str(y), "value": y} for y in range(_default_year - 2, _default_year + 2)]
+                            ),
                             value=_default_year,
                             clearable=False,
                             style=DROPDOWN_STYLE,
@@ -501,6 +512,7 @@ def update_regions(customer, year):
     ]
     if not options:
         options = [{"label": "Global", "value": "__global__"}]
+    options = _sorted_dropdown_options(options)
     return options, options[0]["value"]
 
 
@@ -580,7 +592,9 @@ def _kpi_plot_options(sheet_key: str | None, plot_data: dict | None) -> list[dic
     if not records:
         return []
     kpi_cols = [c for c in records[0] if c not in META_COLS]
-    return [{"label": _header_label(c, units), "value": c} for c in kpi_cols]
+    return _sorted_dropdown_options(
+        [{"label": _header_label(c, units), "value": c} for c in kpi_cols]
+    )
 
 
 def _figure_for_series(

@@ -11,6 +11,7 @@ import pandas as pd
 # SQLite: geometry as WKT TEXT; other types pass through (SQLite affinity).
 SQLITE_TYPE_MAP = {
     'geometry': 'TEXT',
+    'time': 'TEXT',
 }
 
 # Postgres: map T-SQL names to valid PostgreSQL types (PostGIS for geometry).
@@ -23,10 +24,11 @@ POSTGRES_TYPE_MAP = {
     'int': 'INTEGER',
     'bigint': 'BIGINT',
     'float': 'DOUBLE PRECISION',
+    'time': 'TIME',
     'geometry': 'geometry',
 }
 
-# Postgres only: column names that cannot appear unquoted next to their type (e.g. Date DATE).
+# Postgres only: column nagitmes that cannot appear unquoted next to their type (e.g. Date DATE).
 _PG_QUOTE_COLUMNS = frozenset({"Date", "LocalTime"})
 
 

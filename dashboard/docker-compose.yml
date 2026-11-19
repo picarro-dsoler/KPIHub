@@ -1,4 +1,5 @@
 # Build context = repo root (needs KPIHub/Python + packages/locallib).
+# DB: kpihub-postgis on shared Docker network kpihub-net (see PostGIS/DBInit/Dockerrun).
 services:
   kpihub-weekly-dash:
     build:
@@ -7,12 +8,12 @@ services:
     container_name: kpihub-weekly-dash
     ports:
       - "8052:8052"
+    env_file:
+      - ../../.env
     environment:
       PGHOST: kpihub-postgis
       PGPORT: "5432"
-      PGUSER: dsoler
-      PGPASSWORD: dsoler
-      PGDATABASE: KPIHub_EU
+      KPIHUB_HOST: kpihub-postgis
       KPIHUB_DASH_PORT: "8052"
     networks:
       - kpihub-net

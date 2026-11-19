@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import runpy
 import sys
@@ -14,10 +15,6 @@ from bootstrap_paths import activate  # noqa: E402
 
 activate()
 
-ONLY = os.environ.get("KPIHUB_CUSTOMER_ONLY", "").strip()
-if not ONLY:
-    raise SystemExit("Set KPIHUB_CUSTOMER_ONLY to the customer Name (e.g. 'Wales and West Utilities').")
-
 import lib.config as config  # noqa: E402
 
 # Legacy code paths expect KPIHub_Conn; Postgres uses KPIHUB_CONNECTION.
@@ -27,21 +24,62 @@ import lib.handlers.CustomerHandler as customer_handler  # noqa: E402
 
 _orig_get_customer_list = customer_handler.get_customer_list
 
-
-def _filtered_customer_list(*args, **kwargs):
-    # ExcelOutput passes KPIHub_Conn; the handler ignores it.
-    df = _orig_get_customer_list()
-    return df[df["Name"] == ONLY].reset_index(drop=True)
-
-
-customer_handler.get_customer_list = _filtered_customer_list
-
 _DEFAULT_SCRIPTS = ("IngestionProcess", "KPIProcessing", "ExcelOutput")
 
-if __name__ == "__main__":
-    script_env = os.environ.get("KPIHUB_RUN_SCRIPTS", "").strip()
+
+def _install_customer_filter(customer_name: str) -> None:
+    name = customer_name.strip()
+
+    def _filtered_customer_list(*args, **kwargs):
+        # ExcelOutput passes KPIHub_Conn; the handler ignores it.
+        df = _orig_get_customer_list(*args, **kwargs)
+        subset = df[df["Name"] == name]
+        if subset.empty:
+            raise SystemExit(f"Customer not found or inactive in KPI_Customer: {name!r}")
+        return subset.reset_index(drop=True)
+
+    customer_handler.get_customer_list = _filtered_customer_list
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Run global ingest / KPI / Excel scripts for a single customer.",
+    )
+    parser.add_argument(
+        "-c",
+        "--customer",
+        metavar="NAME",
+        help="Customer Name from KPI_Customer (same as KPIHUB_CUSTOMER_ONLY).",
+    )
+    parser.add_argument(
+        "--scripts",
+        metavar="NAMES",
+        help="Comma-separated script base names under processes/global/ "
+        f"(default: {','.join(_DEFAULT_SCRIPTS)}). Overrides KPIHUB_RUN_SCRIPTS.",
+    )
+    args = parser.parse_args()
+
+    customer = (args.customer or os.environ.get("KPIHUB_CUSTOMER_ONLY", "")).strip()
+    if not customer:
+        parser.error(
+            "Pass --customer NAME or set KPIHUB_CUSTOMER_ONLY "
+            "(e.g. python tools/run_one_customer_pipeline.py --customer 'SGN')."
+        )
+
+    script_env = (args.scripts or os.environ.get("KPIHUB_RUN_SCRIPTS", "")).strip()
     scripts = tuple(s.strip() for s in script_env.split(",") if s.strip()) or _DEFAULT_SCRIPTS
+
+    _install_customer_filter(customer)
+    print(f"Customer filter: {customer!r}")
+    print(f"Scripts: {', '.join(scripts)}")
+
     for name in scripts:
         path = os.path.join(_ROOT, "processes", "global", f"{name}.py")
+        if not os.path.isfile(path):
+            raise SystemExit(f"Script not found: {path}")
         print(f"\n{'=' * 60}\n{name}\n{'=' * 60}\n")
         runpy.run_path(path, run_name="__main__")
+
+
+if __name__ == "__main__":
+    main()

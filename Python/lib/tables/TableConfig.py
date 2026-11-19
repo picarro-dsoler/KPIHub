@@ -122,7 +122,7 @@ PEAK_ABOVE_SAT_TABLE = {
         'ReportYear': 'int',
         'WeekNumber': 'int',
         'Disposition': 'nvarchar',
-        'LocalTime': 'datetime',
+        'LocalTime': 'time',
         'BoundaryName': 'nvarchar',
         'BoundaryRegion': 'nvarchar',
         'BoundaryPlant': 'nvarchar',

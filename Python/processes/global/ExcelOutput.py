@@ -16,8 +16,7 @@ from locallib.box import *
 from lib.tables.IngesterTables import *
 from lib.handlers.CustomerHandler import *
 from lib.config import *
-from lib.KPIHubConnection import *
-from lib.query.bank import *
+from lib.query.kpi_query import unified_query
 
 
 META_COLS = {"Year", "PeriodValue", "CustomerName", "BoundaryRegion", "WeekDates"}
@@ -96,7 +95,7 @@ def ensure_all_weeks(export_df, year, customer_name, region, weeks=None, value_c
 if __name__ == "__main__":
     year = 2026
     weeks = expected_weeks(year)
-    customer_list = get_customer_list(KPIHub_Conn)
+    customer_list = get_customer_list()
     customer_list = customer_list[customer_list['Active'] == 1]
     for _, customer in customer_list.iterrows():
         print("--------------------------------")
@@ -111,21 +110,26 @@ if __name__ == "__main__":
                 SELECT CustomerId FROM KPI_Customer WHERE name = '{customer_name}'
             )
         """
-        result = Query(query=query_string).execute(KPIHub_Conn)
+        result = unified_query(query_string)
         if result.empty:
             print(f"No output Excel location found for customer: {customer_name}")
             continue
         box_folder_id = result['BoxFolderId'].values[0]
 
         #Get the columns of the view and get the KPI definitions
-        cols = Query("PRAGMA table_info('Weekly_KPI')").execute(KPIHub_Conn)
-        cols.db.set_query("SELECT * FROM KPI_Definition WHERE name IN (SELECT name from temp_KPI)")
-        kpi_col = cols.db.execute(KPIHub_Conn, source_col = 'name', temp_table_name = 'temp_KPI')
+        cols = unified_query(
+            "SELECT column_name AS name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'weekly_kpi' "
+            "ORDER BY ordinal_position"
+        )
+        print(cols)
+        cols.db.set_query("SELECT * FROM KPI_Definition WHERE Name IN (SELECT Name from temp_KPI)")
+        kpi_col = cols.db.execute(KPIHUB_CONNECTION, source_col = 'Name', temp_table_name = 'temp_KPI')
         output_dict = {kpi_col['Name']: [kpi_col['Unit'], kpi_col['Description'], kpi_col['Formula']] for _, kpi_col in kpi_col.iterrows()}
 
 
-        regions = Query(f"SELECT DISTINCT BoundaryRegion FROM Weekly_KPI WHERE CustomerName = '{customer_name}'").execute(KPIHub_Conn)
-        kpi_data = Query(f"SELECT * FROM Weekly_KPI WHERE CustomerName = '{customer_name}' AND Year = {year}").execute(KPIHub_Conn)
+        regions = unified_query(f"SELECT DISTINCT BoundaryRegion FROM Weekly_KPI WHERE CustomerName = '{customer_name}'")
+        kpi_data = unified_query(f"SELECT * FROM Weekly_KPI WHERE CustomerName = '{customer_name}' AND Year = {year}")
         if kpi_data.empty:
             print(f"No data found for customer: {customer_name} and year: {year}")
             continue
