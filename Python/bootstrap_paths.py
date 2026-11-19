@@ -14,9 +14,9 @@ def _locallib_roots() -> list[Path]:
     seen: set[Path] = set()
     for candidate in (
         REPO_ROOT,
+        WORKSPACE_ROOT / "locallib_packages",
         WORKSPACE_ROOT / "KPIHub",
         WORKSPACE_ROOT / "KPIHubDev",
-        WORKSPACE_ROOT / "locallib_packages",
     ):
         resolved = candidate.resolve()
         if resolved in seen:

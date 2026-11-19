@@ -17,8 +17,8 @@ class PostgresKPIHubConn:
     def __init__(self) -> None:
         host = os.environ.get("KPIHUB_HOST", "localhost")
         database = os.environ.get("KPIHUB_DATABASE", "KPIHub_EU")
-        user = os.environ.get("KPIHUB_USER", "dsoler")
-        password = os.environ.get("KPIHUB_PASSWORD", "dsoler")
+        user = os.environ.get("KPIHUB_USER", os.environ.get("PGUSER", "dash_readonly"))
+        password = os.environ.get("KPIHUB_PASSWORD", os.environ.get("PGPASSWORD", ""))
         port = os.environ.get("KPIHUB_PORT", os.environ.get("PGPORT", "5432"))
         user_q = quote_plus(user)
         password_q = quote_plus(password)

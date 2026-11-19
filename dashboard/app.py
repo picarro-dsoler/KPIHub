@@ -469,7 +469,10 @@ dash_app.layout = html.Div(
                                 "marginBottom": "1rem",
                             },
                         ),
-                        html.Div(id="kpi-definitions-content", children=_definitions_table()),
+                        html.Div(
+                            id="kpi-definitions-content",
+                            children=_definitions_table() if _db_ok else "",
+                        ),
                     ],
                 ),
             ],

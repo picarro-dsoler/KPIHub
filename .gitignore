@@ -8,6 +8,8 @@
 *.csv
 !CustomerInfo.csv
 *.txt
+!requirements.txt
+!dashboard/requirements.txt
 *.log
 *.pdf
 *.html
