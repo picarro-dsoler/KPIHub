@@ -1,0 +1,29 @@
+import sqlite3
+from locallib.picarrodb import *
+from datetime import date
+from .KPIHubConnection import KPIHub_SQLite_Conn, KPIHub_PostgreSQL_Conn
+
+#--- Configuration for the SQLite database
+#DB_PATH = 'database/KPIHub_Prod.db'
+INGESTER_LOG_PATH = 'logs/'
+KPIHUB_CONNECTION = KPIHub_PostgreSQL_Conn
+
+#Refreshing configuration
+UPDATE_WINDOW_DAYS = 30
+UPDATE_FREQUENCY_HOURS = 3
+STARTING_YEAR = 2026
+STARTING_DATE = date(STARTING_YEAR, 1, 1)
+#Connection Configuration
+CONN_DICT = {'EU1':EU1_Conn, 'EU2': EU2_Conn}
+
+#KPI Configuration
+#SUNRISE_TIME = 6
+#SUNSET_TIME = 20
+WORKING_HOURS = 6
+WORKING_DAYS = 5
+SUNSET_TIME = 19
+SUNRISE_TIME = 7
+SPEED_THRESHOLD = 0.5
+
+#Excel Output Configuration
+SUFFIX = '_E_KPI'

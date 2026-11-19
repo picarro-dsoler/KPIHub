@@ -1,0 +1,105 @@
+import os
+import sys
+import pandas as pd
+from datetime import datetime
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from bootstrap_paths import activate
+
+activate()
+
+from locallib.picarrodb import *
+from locallib.query import *
+
+from lib.tables.IngesterTables import *
+from lib.config import *
+
+#Add KPI Definition
+#Syntax: 'KPIName': ['Unit', 'Description', 'Formula', 'KPIType']
+output_dict={
+    'PeriodValue': ['', 'Number of the week starting from 1st of Jan', '', 'Period'],
+    'ReportAssetLengthKm': ['Km', 'Total length of all the assets in the specified period', '', 'Coverage'],
+    'AssetCoveredLengthKm': ['Km', 'Total length of all the assets covered in the report', '', 'Coverage'],
+    'CumulativeAssetCoveredLengthKm': ['Km', 'Cumulative covered length of all the assets covered in the indicated period', '', 'Coverage'],
+    'DistributionPipeKm': ['Km', 'Total length of all the mains in the report', '', 'Coverage'],
+    'DistributionPipeCoveredKm': ['Km', 'Total length of all the mains covered in the report', '', 'Coverage'],
+    'ServicePipeKm': ['Km', 'Total length of all the services in the report', '', 'Coverage'],
+    'ServicePipeCoveredKm': ['Km', 'Total length of all the services covered in the report', '', 'Coverage'],
+    'ReportCount': ['Report', 'Total number of reports in the specified week', '', 'Coverage'],
+    'DaysCount': ['Day', 'Total number of days worked in the specified week', '','Survey'],
+    'FOVMain': ['Percent', 'Km of mains covered over the total Km of mains', 'DistributionPipeCoveredKm / DistributionPipeKm','Coverage'],
+    'SurveyDurationHours': ['Hours', 'Total hours driven by all cars in the week', '', 'Survey'],
+    'TargetDurationHours': ['Hours', 'Exepected total number hours driven by all cars available. i.e 7 days * 7 hours * 25 cars', '', 'Survey'],
+    'CustomerUtilization': ['Percent', 'Total hours driven by all cars in the week over the expected total number hours driven by all cars available. i.e 7 days * 7 hours * 25 cars', 'SurveyDurationHours / TargetDurationHours', 'Survey'],
+    'StarndardUtilization': ['Percent', 'Total hours driven by all cars in the week over the expected total number hours driven by all cars available. i.e 6 days * 5 hours * 25 cars', 'SurveyDurationHours / TargetDurationHours', 'Survey'],
+    'TotalSurveyors': ['Surveyor', 'Total number of surveyors in the specified week', '', 'Survey'],
+    'ProductivityPerSurveyor': ['Km / Surveyor', 'Total length of all the assets covered in the report over the total number of surveyors in the specified week', 'DistributionPipeCoveredKm / TotalSurveyors', 'Survey'],
+    'SurveyCount': ['Survey', 'Total number of surveys in the  specified week', '', 'Survey'],
+    'AvgSpeedKm': ['Km/h', 'Average speed counting all the cars in the specified week', '', 'Survey'],
+    'SurveysCarDay': ['Survey / Car / Day', 'Total number of surveys per car per day in the specified week', 'SurveyCount / TotalSurveyors / DaysCount', 'Survey'],
+    'IdleTime': ['Percent', 'Ratio of idle time over the total survey duration', 'IdleTimeMinutes / SurveyDurationMinutes', 'Survey'],
+    'TotalDrivenLengthKm': ['Km', 'Total length driven in the specified week', '', 'Survey'],
+    'DrivingRatio': ['Ratio', 'Total length driven in the specified week over Total length of all the assets covered in the report', 'TotalKilometers / DistributionPipeCoveredKm', 'Survey'],
+    'NightDrivenLength': ['Km', 'Total length covered during the night in the specified week', '', 'Survey'],
+    'DayDrivenLength': ['Km', 'Total length covered during the day in the specified week', '', 'Survey'],
+    'NightRatio': ['Percent', 'NightKm / TotalKilometers', '', 'Survey'],
+    'DayRatio': ['Percent', 'DayKm / TotalKilometers', '', 'Survey'],
+    'PeakAboveSATCount': ['Peak', 'Total number of peaks above SAT in the specified week', '', 'Emissions'],
+    'LisaCount': ['Lisa', 'Total number of Lisa in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'LisaPSCount': ['Lisa', 'Total number of Lisa in the specified week, (No Disposition 2 and IsFiltered 1)', '', 'Emissions'],
+    'EmissionRate': ['SCFH', 'Total emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'EmissionRateLPM': ['LPM', 'Total emission rate in the specified week, (No Disposition 2)', 'EmissionRate * 0.471947', 'Emissions'],
+    'RepresentativeEmissionRate': ['SCFH', 'Total representative emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'RepresentativeEmissionRateLPM': ['LPM', 'Total representative emission rate in the specified week, (No Disposition 2)', 'RepresentativeEmissionRate * 0.471947', 'Emissions'],
+    'B0RepEmissionRate': ['SCFH', 'Total B0 representative emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'B1RepEmissionRate': ['SCFH', 'Total B1 representative emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'Bm1RepEmissionRate': ['SCFH', 'Total B-1 representative emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'Bm2RepEmissionRate': ['SCFH', 'Total B-2 representative emission rate in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'B0RepEmissionRateLPM': ['LPM', 'Total B0 representative emission rate in the specified week, (No Disposition 2)', 'B0RepEmissionRate * 0.471947', 'Emissions'],
+    'B1RepEmissionRateLPM': ['LPM', 'Total B1 representative emission rate in the specified week, (No Disposition 2)', 'B1RepEmissionRate * 0.471947', 'Emissions'],
+    'Bm1RepEmissionRateLPM': ['LPM', 'Total B-1 representative emission rate in the specified week, (No Disposition 2)', 'Bm1RepEmissionRate * 0.471947', 'Emissions'],
+    'Bm2RepEmissionRateLPM': ['LPM', 'Total B-2 representative emission rate in the specified week, (No Disposition 2)', 'Bm2RepEmissionRate * 0.471947', 'Emissions'],
+    'B0Count': ['Lisa', 'Total number of B0 in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'B1Count': ['Lisa', 'Total number of B1 in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'Bm1Count': ['Lisa', 'Total number of B-1 in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'Bm2Count': ['Lisa', 'Total number of B-2 in the specified week, (No Disposition 2)', '', 'Emissions'],
+    'NGCount': ['Lisa', 'Total number of NG in the specified week, (With Disposition 2)', '', 'Emissions'],
+    'PGCount': ['Lisa', 'Total number of PG in the specified week, (With Disposition 2)', '', 'Emissions'],
+    'Not_NGCount': ['Lisa', 'Total number of Not NG in the specified week, (With Disposition 2)', '', 'Emissions'],
+    'LisaDensity': ['Lisa / Km', 'Number of Lisa per Km of Asset Covered', 'LisaCount / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantanoeusEmission': ['SCFH / Km', 'Emission rate per Km of Asset Covered', 'EmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantanoeusEmissionLPM': ['LPM / Km', 'Emission rate per Km of Asset Covered', 'InstatanoeusEmission * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmission': ['SCFH / Km', 'Representative emission rate per Km of Asset Covered', 'RepresentativeEmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionLPM': ['LPM / Km', 'Representative emission rate per Km of Asset Covered', 'InstantaneousRepEmission * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionB1': ['SCFH / Km', 'B1 representative emission rate per Km of Asset Covered', 'B1RepEmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionB1LPM': ['LPM / Km', 'B1 representative emission rate per Km of Asset Covered', 'InstantaneousRepEmissionB1 * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionB0': ['SCFH / Km', 'B0 representative emission rate per Km of Asset Covered', 'B0RepEmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionB0LPM': ['LPM / Km', 'B0 representative emission rate per Km of Asset Covered', 'InstantaneousRepEmissionB0 * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionBm1': ['SCFH / Km', 'B-1 representative emission rate per Km of Asset Covered', 'Bm1RepEmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionBm1LPM': ['LPM / Km', 'B-1 representative emission rate per Km of Asset Covered', 'InstantaneousRepEmissionBm1 * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionBm2': ['SCFH / Km', 'B-2 representative emission rate per Km of Asset Covered', 'Bm2RepEmissionRate / DistributionPipeCoveredKm', 'Emissions'],
+    'InstantaneousRepEmissionBm2LPM': ['LPM / Km', 'B-2 representative emission rate per Km of Asset Covered', 'InstantaneousRepEmissionBm2 * 0.471947 / DistributionPipeCoveredKm', 'Emissions'],
+    
+    'B0Density': ['Lisa / Km', 'Number of B0 per Km of Asset Covered', 'B0Count / DistributionPipeCoveredKm', 'Emissions'],
+    'B1Density': ['Lisa / Km', 'Number of B1 per Km of Asset Covered', 'B1Count / DistributionPipeCoveredKm', 'Emissions'],
+    'Bm1Density': ['Lisa / Km', 'Number of B-1 per Km of Asset Covered', 'Bm1Count / DistributionPipeCoveredKm', 'Emissions'],
+    'Bm2Density': ['Lisa / Km', 'Number of B-2 per Km of Asset Covered', 'Bm2Count / DistributionPipeCoveredKm', 'Emissions'],
+    'B0Share': ['Percent', 'Number of B0 per Lisa', 'B0Count / LisaCount', 'Emissions'],
+    'B1Share': ['Percent', 'Number of B1 per Lisa', 'B1Count / LisaCount', 'Emissions'],
+    'Bm1Share': ['Percent', 'Number of B-1 per Lisa', 'Bm1Count / LisaCount', 'Emissions'],
+    'Bm2Share': ['Percent', 'Number of B-2 per Lisa', 'Bm2Count / LisaCount', 'Emissions'],
+    'NGShare': ['Percent', 'Number of NG per Lisa', 'NGCount / (NGCount + Not_NGCount + PGCount)', 'Emissions'],
+    'PGShare': ['Percent', 'Number of PG per Lisa', 'PGCount / (NGCount + Not_NGCount + PGCount)', 'Emissions'],
+    'Not_NGShare': ['Percent', 'Number of Not NG per Lisa', 'Not_NGCount / (NGCount + Not_NGCount + PGCount)', 'Emissions'],
+    'POR': ['Km', 'Total Km of the POR in the year', '', 'Coverage'],
+    'CurrentCompletion': ['Percent', 'Current completion of the network based on the POR', 'CumulativeAssetCoveredLengthKm / POR', 'Coverage']
+}
+
+kpi_df = pd.DataFrame(
+    [
+        {"Name": key, "Unit": value[0], "Description": value[1], "Formula": value[2],'Type': value[3], "LastUpdated": datetime.now()}
+        for key, value in output_dict.items()
+    ]
+)
+dbo['KPI_Definition'].reinit_table()
+dbo['KPI_Definition'].update_table(arguments={'DataFrame': kpi_df,'PrimaryKey': 'Name'})

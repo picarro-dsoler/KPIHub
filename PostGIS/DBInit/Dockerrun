@@ -1,7 +1,8 @@
 # Shared network so other containers can reach Postgres by name (kpihub-postgis).
 docker network create kpihub-net 2>/dev/null || true
 
-# Rebuild image after changing DBInit/Dockerfile or init.sql:
+# Standalone image build (postgres:16-bookworm + PostGIS + FDW). No prior kpihub image required.
+# Rebuild after changing DBInit/Dockerfile or init-kpihub.sql:
 #
 #   cd /path/to/personal-repos/KPIHub/PostGIS/DBInit
 #   docker build -t kpihub-postgis .
@@ -13,28 +14,36 @@ docker network create kpihub-net 2>/dev/null || true
 # If you get "Cannot connect to the Docker daemon", start Docker Desktop
 # or run: sudo systemctl start docker
 #
-# New database: init.sql runs automatically on first container start.
-# Existing database: rebuild image, then run migrate_to_ogr_fdw.sql:
-#   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
-#     -f KPIHub/PostGIS/DBInit/migrate_to_ogr_fdw.sql
+# Docker first boot (volume empty) runs ONLY scripts in DBInit/ via docker-entrypoint-initdb.d:
+#   01-init-kpihub.sql  — extensions + empty schemas on KPIHub_EU
+#   02-init-systemhealth.sh — SystemHealth_EU + postgis
 #
-# EU2 hybrid FDW (tds tabular + ogr ReportArea) on existing DB:
-#   psql -h localhost -U dsoler -d Datanalytics -v ON_ERROR_STOP=1 \
-#     -f KPIHub/PostGIS/DBInit/migrate_eu2_hybrid_fdw.sql
+# PostGIS/PSQL_routines/ is NOT run by Docker. Apply those SQL files manually when you want
+# (e.g. init.sql, migrate_*.sql, init/kpi/*, init/ingesters/*).
+#
+# First-time container init creates KPIHub_EU (POSTGRES_DB) + SystemHealth_EU.
+# Changing POSTGRES_DB or init scripts requires a NEW volume (remove old container + volume first):
+#   docker stop kpihub-postgis && docker rm kpihub-postgis
+#   docker volume rm kpihub_eu_pgdata   # destructive
+
+docker stop kpihub-postgis 2>/dev/null || true
+docker rm kpihub-postgis 2>/dev/null || true
 
 docker run -d \
   --name kpihub-postgis \
   --network kpihub-net \
   -e POSTGRES_USER=dsoler \
   -e POSTGRES_PASSWORD=dsoler \
-  -e POSTGRES_DB=Datanalytics \
+  -e POSTGRES_DB=KPIHub_EU \
   -p 5432:5432 \
-  -v datanalytics_pgdata:/var/lib/postgresql/data \
+  -v kpihub_eu_pgdata:/var/lib/postgresql/data \
   --restart unless-stopped \
   kpihub-postgis
 
 # Start your app/dev container on the same network, then connect with:
-#   PGHOST=kpihub-postgis PGPORT=5432 PGUSER=dsoler PGPASSWORD=dsoler PGDATABASE=Datanalytics
+#   PGHOST=kpihub-postgis PGPORT=5432 PGUSER=dsoler PGPASSWORD=dsoler PGDATABASE=KPIHub_EU
+# System health DB on same instance:
+#   PGDATABASE=SystemHealth_EU
 #
 # Example:
 #   docker run --network kpihub-net -it your-dev-image bash

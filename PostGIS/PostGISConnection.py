@@ -11,7 +11,7 @@ PG_HOST = os.environ.get("PGHOST", "localhost")
 PG_PORT = os.environ.get("PGPORT", "5432")
 PG_USER = os.environ.get("PGUSER", "dsoler")
 PG_PASSWORD = os.environ.get("PGPASSWORD", "dsoler")
-PG_DATABASE = os.environ.get("PGDATABASE", "Datanalytics")
+PG_DATABASE = os.environ.get("PGDATABASE", "KPIHub_EU")
 
 
 class PostGISConnection(PConnection):

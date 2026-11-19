@@ -1,4 +1,5 @@
--- Run on first database initialization (docker-entrypoint-initdb.d)
+-- Manual setup for KPIHub_EU (not run by Docker). Example:
+--   psql -h localhost -U dsoler -d KPIHub_EU -v ON_ERROR_STOP=1 -f KPIHub/PostGIS/PSQL_routines/init.sql
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
