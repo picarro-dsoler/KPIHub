@@ -17,6 +17,8 @@ from lib.tables.IngesterTables import *
 from lib.handlers.CustomerHandler import *
 from lib.config import *
 from lib.query.kpi_query import unified_query
+from lib.views.ViewConfig import *
+from lib.kpi_processor.KPIConfig import KPI_DEFINITIONS
 
 
 META_COLS = {"Year", "PeriodValue", "CustomerName", "BoundaryRegion", "WeekDates"}
@@ -117,19 +119,14 @@ if __name__ == "__main__":
         box_folder_id = result['BoxFolderId'].values[0]
 
         #Get the columns of the view and get the KPI definitions
-        cols = unified_query(
-            "SELECT column_name AS name FROM information_schema.columns "
-            "WHERE table_schema = 'public' AND table_name = 'weekly_kpi' "
-            "ORDER BY ordinal_position"
-        )
-        print(cols)
-        cols.db.set_query("SELECT * FROM KPI_Definition WHERE Name IN (SELECT Name from temp_KPI)")
-        kpi_col = cols.db.execute(KPIHUB_CONNECTION, source_col = 'Name', temp_table_name = 'temp_KPI')
-        output_dict = {kpi_col['Name']: [kpi_col['Unit'], kpi_col['Description'], kpi_col['Formula']] for _, kpi_col in kpi_col.iterrows()}
+        cols = pd.DataFrame({'Name': WEEKLY_KPI_CUSTOMER["Columns"].keys()})
+        output_dict = {}
+        for col in cols:
+            if col in KPI_DEFINITIONS.keys():
+                output_dict[col] = [KPI_DEFINITIONS[col][0], KPI_DEFINITIONS[col][1], KPI_DEFINITIONS[col][2]]
 
-
-        regions = unified_query(f"SELECT DISTINCT BoundaryRegion FROM Weekly_KPI WHERE CustomerName = '{customer_name}'")
-        kpi_data = unified_query(f"SELECT * FROM Weekly_KPI WHERE CustomerName = '{customer_name}' AND Year = {year}")
+        regions = unified_query(f"SELECT DISTINCT BoundaryRegion FROM {WEEKLY_KPI_CUSTOMER['Name']} WHERE CustomerName = '{customer_name}'")
+        kpi_data = unified_query(f"SELECT * FROM {WEEKLY_KPI_CUSTOMER['Name']} WHERE CustomerName = '{customer_name}' AND Year = {year}")
         if kpi_data.empty:
             print(f"No data found for customer: {customer_name} and year: {year}")
             continue
@@ -180,8 +177,8 @@ if __name__ == "__main__":
                 # Process the column name
                 units = []
                 for col in export_df.columns:
-                    if col in kpi_col['Name'].values:
-                        units.append(kpi_col.loc[kpi_col['Name'] == col, 'Unit'].values[0])
+                    if col in KPI_DEFINITIONS.keys():
+                        units.append(KPI_DEFINITIONS[col][0])
                     else:
                         units.append("")
 

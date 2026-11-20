@@ -1,4 +1,4 @@
-"""KPIHub Weekly_KPI dashboard — Excel-style weekly table (see processes/global/ExcelOutput.py)."""
+"""KPIHub customer KPI dashboard — weekly / monthly / yearly views (Excel-style tables)."""
 from __future__ import annotations
 
 import os
@@ -24,8 +24,11 @@ from theme import (
 from weekly_kpi import (
     DISPLAY_META_COLS,
     META_COLS,
+    PERIOD_LABEL,
+    PERIOD_TYPE_CHOICES,
     build_excel_sheets_by_type,
     distinct_regions,
+    latest_kpi_updated,
     list_customers,
     load_kpi_definitions,
     region_label,
@@ -39,7 +42,7 @@ def _sorted_dropdown_options(options: list[dict], *, label_key: str = "label") -
     return sorted(options, key=lambda o: str(o.get(label_key, "")).casefold())
 
 
-dash_app = dash.Dash(__name__, suppress_callback_exceptions=True, title="KPIHub Weekly KPI")
+dash_app = dash.Dash(__name__, suppress_callback_exceptions=True, title="KPIHub Customer KPI")
 server = dash_app.server
 
 _default_year = int(os.environ.get("KPIHUB_DEFAULT_YEAR", str(date.today().year)))
@@ -68,9 +71,9 @@ _PLOT_PLACEHOLDER = {
     "layout": {
         "paper_bgcolor": COLORS["surface"],
         "plot_bgcolor": COLORS["surface_alt"],
-        "font": {"color": COLORS["text"], "family": "Inter, Segoe UI, system-ui, sans-serif"},
+        "font": {"color": COLORS["text"], "family": "Helvetica, Helvetica Neue, Arial, sans-serif"},
         "margin": {"l": 48, "r": 24, "t": 40, "b": 48},
-        "xaxis": {"title": "Week", "gridcolor": COLORS["border"], "linecolor": COLORS["border"]},
+        "xaxis": {"title": "Period", "gridcolor": COLORS["border"], "linecolor": COLORS["border"]},
         "yaxis": {"title": "Value", "gridcolor": COLORS["border"], "linecolor": COLORS["border"]},
         "title": {"text": "Choose KPIs below to plot weekly values", "font": {"size": 14, "color": COLORS["muted"]}},
     }
@@ -186,8 +189,10 @@ def _excel_data_table(display, units, *, table_id: dict | str) -> dash_table.Dat
 
 def _plot_store_payload(
     sheets: dict[str, tuple[pd.DataFrame, dict[str, str], pd.DataFrame]],
+    *,
+    period: str,
 ) -> dict:
-    out: dict = {}
+    out: dict = {"_period": period}
     for kpi_type, (_, units, numeric) in sheets.items():
         records: list[dict] = []
         for _, row in numeric.iterrows():
@@ -245,7 +250,6 @@ dash_app.index_string = f"""<!DOCTYPE html>
         <title>{{%title%}}</title>
         {{%favicon%}}
         {{%css%}}
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             body {{ margin: 0; background: {COLORS["bg"]}; color: {COLORS["text"]}; }}
             .dash-table-tooltip {{ background: {COLORS["surface"]} !important; }}
@@ -313,6 +317,32 @@ dash_app.index_string = f"""<!DOCTYPE html>
                 padding: 1.25rem;
                 box-shadow: 0 20px 50px rgba(0,0,0,0.45);
             }}
+            #filter-panel-shell {{
+                background: {COLORS["surface"]};
+                border: 1px solid {COLORS["border"]};
+                border-radius: 12px;
+                margin-bottom: 1rem;
+            }}
+            #filter-panel-header {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.65rem 1rem;
+                cursor: pointer;
+                user-select: none;
+                gap: 0.75rem;
+            }}
+            #filter-panel-header:hover {{
+                background: {COLORS["surface_alt"]};
+            }}
+            #filter-panel-body {{
+                padding: 0 1rem 1rem 1rem;
+                border-top: 1px solid {COLORS["border"]};
+            }}
+            #table-section-title {{
+                font-size: 1.05rem;
+                line-height: 1.45;
+            }}
         </style>
     </head>
     <body>{{%app_entry%}}
@@ -323,84 +353,153 @@ dash_app.index_string = f"""<!DOCTYPE html>
 
 dash_app.layout = html.Div(
     [
-        html.H1("KPIHub · Weekly KPI", style={"marginTop": 0, "fontWeight": 700}),
+        html.H1("KPIHub · Customer KPI", style={"marginTop": 0, "fontWeight": 700}),
         html.P(
-            "Weekly_KPI view with the same layout as the weekly Excel export. Pick one or two KPIs in the chart controls to plot by week number.",
+            "Weekly, monthly, and yearly customer KPI views (same layout as the Excel export). "
+            "Pick one or two KPIs in the chart controls to plot by period.",
             style={"color": COLORS["muted"], "marginBottom": "1rem"},
         ),
         html.Div(
             id="startup-error",
             children=_startup_error or "",
             style={
-                "color": "#f87171",
+                "color": "#bb110e",
                 "marginBottom": "1rem",
                 "display": "block" if _startup_error else "none",
             },
         ),
         html.Div(
-            [
+            id="filter-panel-shell",
+            children=[
                 html.Div(
                     [
-                        html.Label("Customer", style={"fontWeight": 600}),
-                        dcc.Dropdown(
-                            id="customer",
-                            options=_customer_options,
-                            value=_default_customer,
-                            clearable=False,
-                            style=DROPDOWN_STYLE,
-                            className="dash-dropdown",
+                        html.Div(
+                            [
+                                html.Span("Filters", style={"fontWeight": 700, "fontSize": "0.95rem"}),
+                                html.Span(
+                                    id="filter-panel-summary",
+                                    style={"color": COLORS["muted"], "fontSize": "0.85rem", "marginLeft": "0.75rem"},
+                                ),
+                            ],
+                            style={"display": "flex", "alignItems": "baseline", "flexWrap": "wrap", "gap": "0.25rem"},
+                        ),
+                        html.Button(
+                            "Hide ▲",
+                            id="btn-toggle-filters",
+                            n_clicks=0,
+                            style={
+                                "padding": "0.35rem 0.75rem",
+                                "background": "transparent",
+                                "color": COLORS["accent"],
+                                "border": f"1px solid {COLORS['border']}",
+                                "borderRadius": "6px",
+                                "cursor": "pointer",
+                                "fontWeight": 600,
+                                "fontSize": "0.8rem",
+                            },
                         ),
                     ],
-                    style={"flex": "1", "minWidth": "220px"},
+                    id="filter-panel-header",
+                    n_clicks=0,
                 ),
                 html.Div(
-                    [
-                        html.Label("Year", style={"fontWeight": 600}),
-                        dcc.Dropdown(
-                            id="year",
-                            options=_sorted_dropdown_options(
-                                [{"label": str(y), "value": y} for y in range(_default_year - 2, _default_year + 2)]
-                            ),
-                            value=_default_year,
-                            clearable=False,
-                            style=DROPDOWN_STYLE,
-                            className="dash-dropdown",
+                    id="filter-panel-body",
+                    children=[
+                        html.Div(
+                            [
+                                html.Div(
+                                    [
+                                        html.Label("Customer", style={"fontWeight": 600}),
+                                        dcc.Dropdown(
+                                            id="customer",
+                                            options=_customer_options,
+                                            value=_default_customer,
+                                            clearable=False,
+                                            style=DROPDOWN_STYLE,
+                                            className="dash-dropdown",
+                                        ),
+                                    ],
+                                    style={"flex": "1", "minWidth": "220px"},
+                                ),
+                                html.Div(
+                                    [
+                                        html.Label("Period", style={"fontWeight": 600}),
+                                        dcc.Dropdown(
+                                            id="period",
+                                            options=[
+                                                {"label": label, "value": value}
+                                                for value, label in PERIOD_TYPE_CHOICES
+                                            ],
+                                            value="Week",
+                                            clearable=False,
+                                            style=DROPDOWN_STYLE,
+                                            className="dash-dropdown",
+                                        ),
+                                    ],
+                                    style={"width": "140px"},
+                                ),
+                                html.Div(
+                                    [
+                                        html.Label("Year", style={"fontWeight": 600}),
+                                        dcc.Dropdown(
+                                            id="year",
+                                            options=_sorted_dropdown_options(
+                                                [
+                                                    {"label": str(y), "value": y}
+                                                    for y in range(_default_year - 2, _default_year + 2)
+                                                ]
+                                            ),
+                                            value=_default_year,
+                                            clearable=False,
+                                            style=DROPDOWN_STYLE,
+                                            className="dash-dropdown",
+                                        ),
+                                    ],
+                                    style={"width": "120px"},
+                                ),
+                                html.Div(
+                                    [
+                                        html.Label("Region", style={"fontWeight": 600}),
+                                        dcc.Dropdown(
+                                            id="region",
+                                            clearable=False,
+                                            style=DROPDOWN_STYLE,
+                                            className="dash-dropdown",
+                                        ),
+                                    ],
+                                    style={"flex": "1", "minWidth": "200px"},
+                                ),
+                                html.Div(
+                                    html.Button(
+                                        "KPI definitions",
+                                        id="btn-kpi-defs",
+                                        n_clicks=0,
+                                        style={
+                                            "marginTop": "1.35rem",
+                                            "padding": "0.5rem 1rem",
+                                            "background": COLORS["surface_alt"],
+                                            "color": COLORS["text"],
+                                            "border": f"1px solid {COLORS['border']}",
+                                            "borderRadius": "8px",
+                                            "cursor": "pointer",
+                                            "fontWeight": 600,
+                                        },
+                                    ),
+                                ),
+                            ],
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "1rem",
+                                "paddingTop": "1rem",
+                                "alignItems": "flex-start",
+                            },
                         ),
                     ],
-                    style={"width": "120px"},
-                ),
-                html.Div(
-                    [
-                        html.Label("Region", style={"fontWeight": 600}),
-                        dcc.Dropdown(
-                            id="region",
-                            clearable=False,
-                            style=DROPDOWN_STYLE,
-                            className="dash-dropdown",
-                        ),
-                    ],
-                    style={"flex": "1", "minWidth": "200px"},
-                ),
-                html.Div(
-                    html.Button(
-                        "KPI definitions",
-                        id="btn-kpi-defs",
-                        n_clicks=0,
-                        style={
-                            "marginTop": "1.35rem",
-                            "padding": "0.5rem 1rem",
-                            "background": COLORS["surface_alt"],
-                            "color": COLORS["text"],
-                            "border": f"1px solid {COLORS['border']}",
-                            "borderRadius": "8px",
-                            "cursor": "pointer",
-                            "fontWeight": 600,
-                        },
-                    ),
                 ),
             ],
-            style={"display": "flex", "flexWrap": "wrap", "gap": "1rem", "marginBottom": "1rem", "alignItems": "flex-start"},
         ),
+        dcc.Store(id="filters-collapsed", data=False),
         html.Div(id="sheet-title", style={"fontWeight": 600, "marginBottom": "0.75rem"}),
         html.Div(id="kpi-table", style=CARD_STYLE),
         html.Div(
@@ -493,16 +592,69 @@ dash_app.layout = html.Div(
 )
 
 
+def _period_xaxis_title(period: str | None) -> str:
+    if period == "Month":
+        return "Month (PeriodValue)"
+    if period == "Year":
+        return "Year"
+    return "Week number (PeriodValue)"
+
+
+def _format_last_updated(ts: pd.Timestamp | None) -> str:
+    if ts is None or (isinstance(ts, float) and pd.isna(ts)):
+        return "Last updated: —"
+    try:
+        return f"Last updated: {pd.Timestamp(ts).strftime('%Y-%m-%d %H:%M UTC')}"
+    except (TypeError, ValueError):
+        return f"Last updated: {ts}"
+
+
+@dash_app.callback(
+    Output("filter-panel-body", "style"),
+    Output("btn-toggle-filters", "children"),
+    Output("filters-collapsed", "data"),
+    Input("btn-toggle-filters", "n_clicks"),
+    Input("filter-panel-header", "n_clicks"),
+    State("filters-collapsed", "data"),
+    prevent_initial_call=True,
+)
+def toggle_filter_panel(_btn, _hdr, collapsed):
+    collapsed = not bool(collapsed)
+    if collapsed:
+        return {"display": "none"}, "Show ▼", collapsed
+    return {
+        "padding": "0 1rem 1rem 1rem",
+        "borderTop": f"1px solid {COLORS['border']}",
+        "display": "block",
+    }, "Hide ▲", collapsed
+
+
+@dash_app.callback(
+    Output("filter-panel-summary", "children"),
+    Input("customer", "value"),
+    Input("period", "value"),
+    Input("year", "value"),
+    Input("region", "value"),
+)
+def filter_panel_summary(customer, period, year, region_value):
+    if not customer:
+        return ""
+    period_label = PERIOD_LABEL.get(period or "Week", period or "Week")
+    region = region_label(None if region_value == "__global__" else region_value)
+    return f"{customer} · {period_label} · {year} · {region}"
+
+
 @dash_app.callback(
     Output("region", "options"),
     Output("region", "value"),
     Input("customer", "value"),
     Input("year", "value"),
+    Input("period", "value"),
 )
-def update_regions(customer, year):
+def update_regions(customer, year, period):
     if not customer or not _db_ok:
         return [], None
-    regions = distinct_regions(customer)
+    regions = distinct_regions(customer, period or "Week")
     options = [
         {
             "label": region_label(r),
@@ -540,19 +692,35 @@ def toggle_defs_modal(open_clicks, close_clicks, current_style):
     Input("customer", "value"),
     Input("year", "value"),
     Input("region", "value"),
+    Input("period", "value"),
 )
-def update_table(customer, year, region_value):
+def update_table(customer, year, region_value, period):
     if not customer or year is None or region_value is None or not _db_ok:
-        return "", html.P("Select customer, year, and region.", style={"color": COLORS["muted"]}), None
+        return "", html.P("Select customer, year, period, and region.", style={"color": COLORS["muted"]}), None
 
+    period = period or "Week"
     region = None if region_value == "__global__" else region_value
     try:
-        sheets = build_excel_sheets_by_type(customer, int(year), region)
+        sheets = build_excel_sheets_by_type(customer, int(year), region, period)
     except Exception as exc:  # noqa: BLE001
-        return "", html.P(f"Query error: {exc}", style={"color": "#f87171"}), None
+        return "", html.P(f"Query error: {exc}", style={"color": "#bb110e"}), None
 
-    title = f"KPI {region_label(region) if region else 'Global'} · {year} · Weekly (by Type)"
-    store = _plot_store_payload(sheets)
+    period_label = PERIOD_LABEL.get(period, period)
+    updated = latest_kpi_updated(customer, int(year), period, region)
+    title = html.Div(
+        [
+            html.Div(
+                f"{period_label} KPI · {customer} · {region_label(region)} · {year}",
+                id="table-section-title",
+                style={"fontWeight": 700},
+            ),
+            html.Div(
+                _format_last_updated(updated),
+                style={"color": COLORS["muted"], "fontSize": "0.9rem", "marginTop": "0.25rem"},
+            ),
+        ]
+    )
+    store = _plot_store_payload(sheets, period=period)
 
     table_wrap = dcc.Tabs(
         [
@@ -580,11 +748,11 @@ def update_table(customer, year, region_value):
     return title, table_wrap, store
 
 
-_PLOT_TRACE_COLORS = (COLORS["accent"], "#34d399")
+_PLOT_TRACE_COLORS = (COLORS["accent"], COLORS.get("accent_light", "#7aba7b"))
 
 
 def _kpi_plot_options(sheet_key: str | None, plot_data: dict | None) -> list[dict]:
-    if not plot_data or not sheet_key or sheet_key not in plot_data:
+    if not plot_data or not sheet_key or sheet_key not in plot_data or sheet_key == "_period":
         return []
     block = plot_data[sheet_key]
     records = block.get("records") or []
@@ -617,9 +785,15 @@ def _figure_for_series(
     records = block.get("records") or []
     units = block.get("units") or {}
     if not records:
-        return _empty_figure("No weekly data for this sheet.")
+        return _empty_figure("No data for this sheet.")
 
-    weeks = [r.get("PeriodValue") for r in records]
+    period = (plot_data.get("_period") if plot_data else None) or "Week"
+    x_vals = []
+    for r in records:
+        if "PeriodValue" in r and r.get("PeriodValue") is not None:
+            x_vals.append(r.get("PeriodValue"))
+        else:
+            x_vals.append(r.get("Year"))
     two_series = len(series) == 2 and series[0] != series[1]
 
     fig = go.Figure()
@@ -631,13 +805,13 @@ def _figure_for_series(
         yaxis = "y2" if two_series and i == 1 else "y"
         fig.add_trace(
             go.Bar(
-                x=weeks,
+                x=x_vals,
                 y=y_vals,
                 name=_header_label(col, units),
                 marker={"color": color, "line": {"color": COLORS["border"], "width": 1}},
                 offsetgroup=str(i),
                 yaxis=yaxis,
-                hovertemplate="Week %{x}<br>%{y:.4g}<extra></extra>",
+                hovertemplate="%{x}<br>%{y:.4g}<extra></extra>",
             )
         )
 
@@ -648,11 +822,11 @@ def _figure_for_series(
     layout_kw = dict(
         paper_bgcolor=COLORS["surface"],
         plot_bgcolor=COLORS["surface_alt"],
-        font={"color": COLORS["text"], "family": "Inter, Segoe UI, system-ui, sans-serif"},
+        font={"color": COLORS["text"], "family": "Helvetica, Helvetica Neue, Arial, sans-serif"},
         margin={"l": 56, "r": 56 if two_series else 24, "t": 48, "b": 48},
         xaxis={
-            "title": "Week number (PeriodValue)",
-            "dtick": 1,
+            "title": _period_xaxis_title(period),
+            "dtick": 1 if period == "Week" else None,
             "gridcolor": COLORS["border"],
             "linecolor": COLORS["border"],
         },

@@ -3,7 +3,7 @@ import os
 import re
 import sqlite3
 import sys
-
+from lib.views.ViewConfig import KPI_CUSTOMER_VIEWS
 
 # lib/ is not on sys.path when imported as lib.tables.*; sibling modules use flat imports.
 _lib_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -30,3 +30,9 @@ column_name_map = {}
 for _table in dbo.values():
     for c in _table.columns:
         column_name_map[c.name.lower()] = c.name
+for kpi_view in KPI_CUSTOMER_VIEWS:
+    for col in kpi_view["Columns"].keys():
+        column_name_map[col.lower()] = col
+
+column_name_map['customername'] = 'CustomerName'
+column_name_map['customerid'] = 'CustomerId'

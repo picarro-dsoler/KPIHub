@@ -1,20 +1,25 @@
+# Palette aligned with picarro.com (daudo_subtheme): brand green, dark bands, grey copy.
+# Sources: .btn-theme / .btn-theme-submit (#6eb43f), dark blocks (#111111), borders (#454545),
+# secondary text (#788592, #a7a7a7).
 COLORS = {
-    "bg": "#0b1220",
-    "surface": "#131c2e",
-    "surface_alt": "#1a2740",
-    "border": "#2a3a52",
-    "text": "#e8eef7",
-    "muted": "#94a3b8",
-    "accent": "#38bdf8",
-    "header_bg": "#1e293b",
-    "unit_row_bg": "#0f172a",
+    "bg": "#111111",
+    "surface": "#1c1c1c",
+    "surface_alt": "#232323",
+    "border": "#454545",
+    "text": "#ffffff",
+    "muted": "#788592",
+    "accent": "#6eb43f",
+    "accent_light": "#7aba7b",
+    "accent_dark": "#5a9a33",
+    "header_bg": "#0b0b0b",
+    "unit_row_bg": "#181818",
 }
 
 PAGE_STYLE = {
     "minHeight": "100vh",
     "backgroundColor": COLORS["bg"],
     "color": COLORS["text"],
-    "fontFamily": "'Inter', 'Segoe UI', system-ui, sans-serif",
+    "fontFamily": "Helvetica, 'Helvetica Neue', Arial, sans-serif",
     "padding": "1.5rem 2rem",
 }
 
@@ -42,7 +47,7 @@ TABLE_STYLE_FILTER = {
     "backgroundColor": COLORS["unit_row_bg"],
     "fontWeight": "700",
     "textAlign": "center",
-    "borderBottom": "2px solid #000",
+    "borderBottom": f"2px solid {COLORS['accent']}",
     "border": f"1px solid {COLORS['border']}",
     "padding": "6px",
 }
